@@ -1,0 +1,87 @@
+{
+  "projectType": "saas",
+  "projectName": "D&D Textil - Tienda Digital",
+  "projectDescription": "A full-stack digital textile store built with React and Java, featuring multi-role dashboards for clients, sellers, and administrators, with product catalog, shopping cart, checkout, and inventory management.",
+  "theme": "almond",
+  "primaryColor": "#f97316",
+  "lightColor": "#fff7ed",
+  "darkColor": "#9a3412",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Getting Started",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": ["introduction", "quickstart"]
+          },
+          {
+            "group": "Setup",
+            "pages": ["setup/requirements", "setup/installation", "setup/database"]
+          }
+        ]
+      },
+      {
+        "tab": "Features",
+        "groups": [
+          {
+            "group": "Shopping",
+            "pages": ["features/catalog", "features/product-detail", "features/cart", "features/checkout"]
+          },
+          {
+            "group": "User Accounts",
+            "pages": ["features/authentication", "features/client-dashboard"]
+          },
+          {
+            "group": "Seller Portal",
+            "pages": ["features/seller-dashboard", "features/seller-orders", "features/stock-alerts"]
+          },
+          {
+            "group": "Admin Panel",
+            "pages": ["features/admin-overview", "features/user-management", "features/inventory", "features/analytics"]
+          }
+        ]
+      },
+      {
+        "tab": "Architecture",
+        "groups": [
+          {
+            "group": "System Design",
+            "pages": ["architecture/overview", "architecture/frontend", "architecture/backend", "architecture/database"]
+          },
+          {
+            "group": "Reference",
+            "pages": ["architecture/routes", "architecture/roles-permissions"]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Product catalog with filters, sorting, and price range",
+    "Shopping cart with localStorage persistence",
+    "Multi-step checkout with order confirmation",
+    "Role-based access control (client, seller, admin)",
+    "Client dashboard with order history, wishlist, and project calculator",
+    "Seller dashboard with product management, orders, and stock alerts",
+    "Admin panel with user management, inventory, analytics, and support tools",
+    "Dark mode support via Tailwind CSS",
+    "Animated page transitions with Framer Motion",
+    "PostgreSQL database with Java backend API"
+  ],
+  "publicApiSurface": [
+    "POST /api/login",
+    "POST /api/register",
+    "GET / (Home page)",
+    "GET /catalogo (Product catalog)",
+    "GET /producto/:id (Product detail)",
+    "GET /carrito (Shopping cart)",
+    "GET /checkout (Checkout - protected)",
+    "GET /confirmacion (Order confirmation - protected)",
+    "GET /cliente (Client dashboard - role: client)",
+    "GET /vendedor (Seller dashboard - role: seller/admin)",
+    "GET /admin (Admin overview - role: admin)",
+    "GET /nosotros (About page)",
+    "GET /contacto (Contact page)"
+  ]
+}
