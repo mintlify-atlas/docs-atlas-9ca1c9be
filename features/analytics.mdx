@@ -1,0 +1,211 @@
+---
+title: Analytics
+description: The D&D Textil analytics suite — regional sales heat map, inventory rotation ranking, returns analysis, revenue projections, and bug reports.
+---
+
+The analytics section (`/admin/analytics/*`) provides four business intelligence views built with the `recharts` library. All routes require the **admin** role. Access any analytics page from the **Business Intelligence** module card on the admin overview dashboard.
+
+<Info>
+  All analytics pages use live data from the `MetricsContext` — the same orders, users, products, and sales time-series that power the admin overview dashboard.
+</Info>
+
+## Sales heat map (`/admin/analytics/mapa-ventas`)
+
+This page visualises total sales volume broken down by Colombian department, using a Recharts `Treemap` where tile size and colour intensity both reflect revenue.
+
+### Summary cards
+
+| Card | Metric |
+|---|---|
+| **Ventas Totales** | Total revenue across all regions |
+| **Mejor Región** | Name and revenue of the top-performing department |
+| **Departamentos** | Number of departments with recorded sales |
+| **Promedio/Región** | Average revenue per department |
+
+### Treemap chart
+
+The heat map renders a 500px-tall `ResponsiveContainer` containing a `Treemap` with a custom content renderer. Each tile represents one Colombian department:
+
+- **Tile size** — proportional to revenue relative to the total.
+- **Colour intensity** — a purple gradient (`rgba(139, 92, 246, opacity)`) where higher sales = more opaque. Opacity is calculated as `sales / 20,000,000`, capped at 1.
+- **Labels** — department name and revenue in millions (e.g., `$4.2M`) appear on tiles large enough to display them (width > 60px, height > 40px).
+- **Tooltip** — hover over a tile to see the department name, total sales (COP), order count, and average order value.
+
+### Top 3 regions
+
+Below the chart, three podium cards highlight the gold, silver, and bronze departments with their total sales and order count.
+
+### Full regions table
+
+A complete table shows every department with:
+
+| Column | Details |
+|---|---|
+| **Departamento** | Department name |
+| **Ventas** | Total revenue (COP) |
+| **Pedidos** | Order count badge |
+| **Valor Promedio** | Average order value (monospace) |
+| **% del Total** | Inline progress bar plus percentage label |
+
+## Rotation ranking (`/admin/analytics/rotacion`)
+
+This page identifies your best-rotating products and surfaces dead stock — products that have not sold within a configurable number of days.
+
+### Summary cards
+
+| Card | Metric |
+|---|---|
+| **Bestsellers** | Number of products in the top-10 rotation list |
+| **Stock Muerto** | Number of products with no sales in the threshold window |
+| **Total Productos** | All products in the catalog |
+| **Umbral Actual** | Editable day threshold for dead-stock classification (default: 30 days) |
+
+You can change the dead-stock threshold directly on this page using the number input in the **Umbral Actual** card. The dead-stock table updates immediately.
+
+### Top 10 bestsellers table
+
+Products are ranked by total units sold. Each row shows:
+
+| Column | Details |
+|---|---|
+| **Ranking** | Gold/silver/bronze badges for positions 1–3 |
+| **Producto** | Product name and ID |
+| **Ventas** | Units sold (green badge) |
+| **Ingresos** | Total revenue attributed to this product |
+| **Velocidad** | Sales velocity in units per day (e.g., `0.83 /día`) |
+| **Categoría** | Product category (blue badge) |
+
+### Dead stock table
+
+Products with no sales within the configured threshold period appear here with:
+
+- Product name and ID
+- Category badge
+- Days without a sale (red)
+- Current price
+- A recommendation tag (e.g., "Aplicar descuento", "Revisar precio")
+
+<Tip>
+  Lower the threshold to 7 days during high-demand seasons to catch slow-movers early and act before they accumulate.
+</Tip>
+
+## Returns analysis (`/admin/analytics/devoluciones`)
+
+This page measures the platform's return rate and correlates quality reports with specific fabric types and sellers.
+
+### Summary cards
+
+| Card | Metric |
+|---|---|
+| **Tasa de Devolución** | Returned orders / total orders as a percentage |
+| **Total Reportes** | All quality/bug reports submitted |
+| **Total Pedidos** | All orders in the system |
+| **Valor Afectado** | Sum of returned order totals in COP |
+
+### Reports by fabric type — pie chart
+
+A `recharts` `PieChart` with slice labels (`name: percentage`) breaks down quality reports by the product category prefix. Each slice is coloured from a six-colour palette (red, amber, green, blue, violet, pink).
+
+### Top sellers with reports — bar list
+
+A ranked list shows up to 5 sellers with the most quality reports against their names. Each entry shows:
+
+- Rank number (red badge)
+- Seller name
+- A relative horizontal progress bar
+- Report count and report rate percentage
+
+### Quality reports table
+
+The most recent 10 quality reports are listed with:
+
+| Column | Details |
+|---|---|
+| **ID** | Report ID (monospace) |
+| **Producto** | Product name or N/A |
+| **Cliente** | Client name or `Cliente [ID]` |
+| **Descripción** | Truncated report text |
+| **Prioridad** | Red = Alta, yellow = Media, green = Baja |
+| **Estado** | Blue = Abierto, green = Resuelto, grey = En revisión |
+| **Fecha** | Submission date |
+
+<Note>
+  Returns analysis uses `bugReports` to approximate the return rate because quality reports are the mechanism through which customers flag product issues. Returned orders (`status === 'returned'`) are tracked separately in the **Tasa de Devolución** metric.
+</Note>
+
+## Revenue projection (`/admin/analytics/proyeccion`)
+
+This page forecasts monthly revenue across three scenarios based on your historical sales data.
+
+### Projection window selector
+
+Use the **Proyectar** dropdown at the top right to generate projections for 3, 6, or 12 months ahead. The chart and table update immediately on change.
+
+### Methodology
+
+Projections are calculated from:
+
+- **Monthly average** — average daily sales from the last 30 data points, multiplied by 30.
+- **Growth rate** — an 8.5% monthly compounding rate applied to the base value.
+- **Scenarios** — Conservative = projected × 0.85; Optimistic = projected × 1.20.
+
+### Summary cards
+
+| Card | Metric |
+|---|---|
+| **Crecimiento Esperado** | 8.5% monthly |
+| **Proyección N meses** | Projected revenue at the end of the selected window |
+| **Escenario Conservador** | Projected × 0.85 (-15% downside) |
+| **Escenario Optimista** | Projected × 1.20 (+20% upside) |
+
+### Area chart
+
+A `recharts` `AreaChart` renders three filled area series over the projection period:
+
+- **Conservador** — amber fill, amber line
+- **Proyectado** — violet fill, violet line
+- **Optimista** — green fill, green line
+
+The Y-axis unit is millions of COP. The tooltip formatter shows values as `$N.NNM`.
+
+### Monthly projection table
+
+A detailed table breaks down each projected month with four columns:
+
+| Column | Details |
+|---|---|
+| **Mes** | Abbreviated month name (Ene, Feb, Mar…) |
+| **Conservador** | Conservative scenario value (orange monospace) |
+| **Proyectado** | Base projection (primary colour, bold) |
+| **Optimista** | Optimistic scenario (green monospace) |
+| **Rango** | ± half the spread between conservative and optimistic |
+
+<Warning>
+  Revenue projections use a fixed 8.5% growth assumption and the last 30 days of sales data. They are estimates for planning purposes only and should not be used as financial guarantees.
+</Warning>
+
+## Bug reports (`/admin/reportes`)
+
+The bug reports page (`/admin/reportes`) gives you a simple queue for platform-level issue reports submitted by any user.
+
+### Report table columns
+
+| Column | Details |
+|---|---|
+| **ID** | Sequential report number (monospace) |
+| **Problema** | Report title; type and submission date shown below |
+| **Severidad** | Coloured badge: green = Low, blue = Medium, orange = High, red = Critical |
+| **Estado** | Current status: open, pending, closed, rejected |
+| **Usuario** | Name of the user who submitted the report |
+| **Acciones** | Resolve (green checkmark) and Discard (red ✕) buttons |
+
+### Actions
+
+- **Resolve** — click the green checkmark icon to mark a report as `closed`. The button is hidden once a report is already closed.
+- **Discard** — click the red ✕ icon to mark a report as `rejected` regardless of its current status.
+
+Both actions display a success notification confirming the status update.
+
+<Note>
+  Bug reports submitted here are separate from the quality reports that appear in **Returns Analysis** (`/admin/analytics/devoluciones`). Bug reports cover platform-level issues (UI bugs, feature requests) while quality reports are product-specific complaints submitted by clients through the storefront.
+</Note>

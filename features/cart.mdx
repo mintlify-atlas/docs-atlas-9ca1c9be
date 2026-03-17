@@ -1,0 +1,139 @@
+---
+title: "Shopping cart"
+description: "Manage cart items, apply coupon codes, review order totals, and proceed to checkout at /carrito."
+keywords: ["cart", "shopping cart", "coupon", "checkout", "localStorage", "order summary"]
+---
+
+## Overview
+
+The cart page (`/carrito`) shows every item you have added to your order. It lets you adjust quantities, remove items, apply a discount coupon, and review the full order total before proceeding to checkout.
+
+Cart state is persisted in `localStorage` so your items survive page refreshes and browser restarts.
+
+## Cart persistence
+
+The `CartContext` stores two values in `localStorage`:
+
+| Key | Value |
+|---|---|
+| `cart` | Array of cart items (product data + `quantity`) |
+| `applied_coupon` | The active coupon object, or `null` |
+
+The `useLocalStorage` hook keeps React state and `localStorage` in sync automatically. Any change — adding a product, updating a quantity, removing an item, or clearing the cart — is immediately written to storage.
+
+<Note>
+  Cart data is device-local. It is not synced to a user account or shared across browsers.
+</Note>
+
+## Empty cart state
+
+When the cart contains no items, the page shows a centered empty-state panel instead of the product list:
+
+- A shopping bag icon in a gradient circle.
+- The heading **Tu carrito está vacío**.
+- A short prompt to explore the catalog.
+- A **Ver Catálogo** button that links to `/catalogo`.
+
+## Cart item display
+
+Each `CartRow` in the list shows:
+
+| Element | Source |
+|---|---|
+| Product image | First entry in `item.images` array; icon fallback if unavailable |
+| Product name | `item.name` |
+| Category | `item.category` |
+| Material | `item.material` (desktop only) |
+| Unit price | `item.price` formatted as `$X/m` |
+| Quantity control | Inline `+` / `−` stepper |
+| Line total | `item.price × item.quantity` in primary color |
+| Remove button | Red trash-can icon |
+
+## Modifying quantities
+
+The inline stepper in each cart row works the same way as the quantity selector on the product detail page:
+
+- Click **−** to decrease by 1. The button is disabled at a quantity of 1.
+- Click **+** to increase by 1. The button is disabled when `quantity >= item.stock`.
+
+If you call `updateQuantity` with a value of `0` or less, the item is removed from the cart automatically.
+
+## Removing items
+
+Click the red trash-can icon on any row to remove that product entirely. The row animates out to the left on removal.
+
+To clear everything at once, click **Vaciar carrito** in the section header. This calls `clearCart()`, which empties the cart array and also removes any applied coupon.
+
+## Order summary
+
+The sticky sidebar on the right shows the running order total. Calculations use this logic:
+
+| Line | Calculation |
+|---|---|
+| Subtotal | Sum of `price × quantity` for all items |
+| Coupon discount | See coupon section below |
+| Envío (shipping) | **$0** when `(subtotal − discount) ≥ $100,000`; otherwise **$15,000** |
+| IVA (tax) | `(subtotal − discount) × 0.19` (19%) |
+| **Total** | `(subtotal − discount) + shipping + tax` |
+
+<Info>
+  Tax (IVA) is calculated on the discounted subtotal, not the original subtotal.
+</Info>
+
+When your order qualifies for free shipping, a green **¡Gratis!** label replaces the shipping amount. If it does not qualify yet, a blue hint shows how much more you need to add:
+
+```
+Agrega $35,000 más para envío gratis
+```
+
+Three trust badges appear at the bottom of the summary panel:
+
+- Pago 100% seguro
+- Envío gratis desde $100.000
+- Devoluciones fáciles
+
+## Coupon codes
+
+Enter a discount code in the **¿Tienes un cupón?** input inside the order summary. Codes are automatically uppercased as you type. Press **Enter** or click **Aplicar** to redeem.
+
+Validation checks (in order):
+
+1. The code must match an active coupon (`active: true`).
+2. The coupon must not be past its `expiresAt` date.
+3. If the coupon has a `minPurchase` rule, your subtotal must meet the minimum.
+
+Error messages appear inline below the input field:
+
+| Error | Message |
+|---|---|
+| Unknown or inactive code | `Cupón inválido o inactivo` |
+| Expired | `Este cupón ha expirado` |
+| Below minimum purchase | `Compra mínima: $X` |
+
+Coupons support two discount types:
+
+| `discountType` | Behaviour |
+|---|---|
+| `percentage` | Removes `discountValue`% from the subtotal |
+| `fixed` | Removes a flat `discountValue` amount; capped at the subtotal |
+
+Once applied, the coupon code is shown as a green chip in the summary. Click the **×** on the chip to remove the coupon.
+
+## Proceeding to checkout
+
+Click **Proceder al Pago** in the order summary sidebar to navigate to `/checkout`. The button is always visible as long as the cart has at least one item.
+
+<Steps>
+  <Step title="Review your items">
+    Check product names, quantities, and line totals in the left column.
+  </Step>
+  <Step title="Apply a coupon (optional)">
+    Enter a valid coupon code and click **Aplicar** to see your discount reflected in the summary.
+  </Step>
+  <Step title="Confirm totals">
+    Review subtotal, shipping, and IVA in the order summary. Check whether you qualify for free shipping.
+  </Step>
+  <Step title="Proceed to checkout">
+    Click **Proceder al Pago** to move to `/checkout` and complete your delivery details.
+  </Step>
+</Steps>

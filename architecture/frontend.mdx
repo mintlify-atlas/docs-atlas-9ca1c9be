@@ -1,0 +1,300 @@
+---
+title: Frontend architecture
+description: React 18 + Vite + Tailwind CSS frontend deep dive for D&D Textil.
+---
+
+The frontend is a single-page application built with React 18 and bundled with Vite 5. All source code lives under `src/`.
+
+## Tech stack
+
+| Dependency | Version | Purpose |
+|-----------|---------|--------|
+| `react` | 18.3.1 | UI library |
+| `react-dom` | 18.3.1 | DOM renderer |
+| `react-router-dom` | 6.22.0 | Client-side routing |
+| `framer-motion` | 11.0.5 | Page transition animations |
+| `react-hook-form` | 7.71.1 | Form state management |
+| `@hookform/resolvers` | 5.2.2 | Zod adapter for RHF |
+| `zod` | 4.3.6 | Schema validation |
+| `recharts` | 3.7.0 | Admin analytics charts |
+| `react-icons` | 5.0.1 | Icon library |
+| `tailwindcss` | 3.4.1 | Utility-first CSS |
+| `vite` | 5.4.11 | Build tool / dev server |
+
+## Directory structure
+
+```
+src/
+├── App.jsx                # BrowserRouter + AnimatePresence + all Routes
+├── main.jsx               # ReactDOM.createRoot entry point
+├── index.css              # Global styles / Tailwind directives
+├── components/
+│   ├── AppProviders.jsx   # Nested context provider tree
+│   ├── ProtectedRoute.jsx # Role-based route guard
+│   └── Toast.jsx          # Notification toast component
+├── context/               # Six React Context providers
+├── hooks/                 # useDarkMode, useLocalStorage
+├── utils/                 # formatters.js
+├── data/
+│   ├── products.json      # Static fallback product catalog
+│   └── mockData.js        # Seed data for admin metrics
+└── pages/
+    ├── Home.jsx
+    ├── Catalog.jsx
+    ├── ProductDetail.jsx
+    ├── Cart.jsx
+    ├── Checkout.jsx
+    ├── Login.jsx
+    ├── Register.jsx
+    ├── client/            # Client dashboard pages
+    ├── seller/            # Seller dashboard pages
+    ├── admin/             # Admin dashboard pages
+    └── payment/
+```
+
+## Entry point
+
+```jsx
+// src/main.jsx
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.jsx'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+    <React.StrictMode>
+        <App />
+    </React.StrictMode>,
+)
+```
+
+## Context providers
+
+All providers are composed in `AppProviders.jsx`, which wraps the entire app before the router:
+
+```jsx
+// src/components/AppProviders.jsx
+export function AppProviders({ children }) {
+    return (
+        <NotificationProvider>
+            <AuthProvider>
+                <MetricsProvider>
+                    <CartProvider>
+                        <ProductProvider>
+                            <UIProvider>
+                                {children}
+                            </UIProvider>
+                        </ProductProvider>
+                    </CartProvider>
+                </MetricsProvider>
+            </AuthProvider>
+        </NotificationProvider>
+    );
+}
+```
+
+The nesting order matters: `AuthProvider` sits inside `NotificationProvider` so it can call `showNotification` during login/logout.
+
+### Provider responsibilities
+
+| Provider | Hook | Key state | Persistence |
+|---------|------|-----------|-------------|
+| `NotificationProvider` | `useNotification` | `notifications[]` | None (in-memory) |
+| `AuthProvider` | `useAuth` | `user`, `isAuthenticated` | `localStorage` (`authUser`) |
+| `MetricsProvider` | `useMetrics` | users, orders, products, coupons, tickets, inventory | None (fetched from API / mock) |
+| `CartProvider` | `useCart` | `cartItems[]`, `appliedCoupon` | `localStorage` (`cart`, `applied_coupon`) |
+| `ProductProvider` | `useProducts` | `products[]`, `loading`, `error` | None (fetched from API) |
+| `UIProvider` | `useUI` | `carouselSlides[]`, `homeSections` | None (in-memory) |
+
+## Routing
+
+The app uses React Router v6 `BrowserRouter`. `AnimatePresence` from Framer Motion wraps the `Routes` component to animate page transitions:
+
+```jsx
+// src/App.jsx (simplified)
+function AppRoutes() {
+    const location = useLocation();
+    return (
+        <AnimatePresence mode="wait">
+            <Routes location={location} key={location.pathname}>
+                <Route path="/" element={<Home />} />
+                {/* ... */}
+                <Route
+                    path="/cliente"
+                    element={
+                        <ProtectedRoute roles="client">
+                            <ClientDashboard />
+                        </ProtectedRoute>
+                    }
+                />
+            </Routes>
+        </AnimatePresence>
+    );
+}
+
+function App() {
+    return (
+        <AppProviders>
+            <Router>
+                <ScrollToTop />
+                <AppRoutes />
+            </Router>
+        </AppProviders>
+    );
+}
+```
+
+## Custom hooks
+
+### `useLocalStorage`
+
+A drop-in replacement for `useState` that mirrors every write to `window.localStorage` as JSON:
+
+```javascript
+// src/hooks/useLocalStorage.js
+export function useLocalStorage(key, initialValue) {
+    const [storedValue, setStoredValue] = useState(() => {
+        try {
+            const item = window.localStorage.getItem(key);
+            return item ? JSON.parse(item) : initialValue;
+        } catch (error) {
+            return initialValue;
+        }
+    });
+
+    const setValue = (value) => {
+        try {
+            const valueToStore = value instanceof Function ? value(storedValue) : value;
+            setStoredValue(valueToStore);
+            window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        } catch (error) {
+            console.error(`Error saving ${key} to localStorage:`, error);
+        }
+    };
+
+    return [storedValue, setValue];
+}
+```
+
+### `useDarkMode`
+
+Reads and writes `darkMode` in `localStorage`, then toggles the `dark` class on `document.documentElement` — Tailwind's class-based dark mode strategy:
+
+```javascript
+// src/hooks/useDarkMode.js
+export function useDarkMode() {
+    const [darkMode, setDarkMode] = useLocalStorage('darkMode', false);
+
+    useEffect(() => {
+        const root = window.document.documentElement;
+        if (darkMode) {
+            root.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+        }
+    }, [darkMode]);
+
+    const toggleDarkMode = () => {
+        setDarkMode(!darkMode);
+    };
+
+    return [darkMode, toggleDarkMode];
+}
+```
+
+## Utility functions
+
+All formatting helpers live in `src/utils/formatters.js`:
+
+```javascript
+// Format a number as Colombian pesos (COP)
+export function formatCurrency(amount) {
+    if (amount == null || isNaN(amount)) return '$ 0';
+    return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(amount);
+}
+
+// Format a date in Spanish (Colombia locale)
+export function formatDate(date) {
+    return new Intl.DateTimeFormat('es-CO', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    }).format(new Date(date));
+}
+
+// Generate a unique ID
+export function generateId() {
+    return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+}
+
+// Truncate text to a maximum length
+export function truncateText(text, maxLength = 100) {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+}
+```
+
+## Tailwind CSS configuration
+
+The theme extends Tailwind with two color scales and two font families:
+
+```javascript
+// tailwind.config.js (excerpt)
+export default {
+    darkMode: 'class',  // Toggle dark mode by adding/removing 'dark' on <html>
+    theme: {
+        extend: {
+            colors: {
+                primary: {
+                    500: '#f97316',  // Orange — main brand color
+                    600: '#ea580c',
+                    // ... 50–900 scale
+                },
+                secondary: {
+                    500: '#71717a',  // Zinc gray
+                    // ... 50–900 scale
+                },
+            },
+            fontFamily: {
+                sans: ['Inter', 'system-ui', 'sans-serif'],
+                display: ['Outfit', 'Inter', 'sans-serif'],
+            },
+        },
+    },
+};
+```
+
+<Note>
+The `accent` color scale is defined identically to `primary` — both map to the same orange ramp. The `system_config` table stores a `primary_color` of `#8B5CF6` (purple) that the admin panel can use to override the theme at runtime.
+</Note>
+
+## Vite configuration
+
+```javascript
+// vite.config.js
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
+  server: {
+    host: '0.0.0.0',
+    port: 3001,
+    strictPort: false,
+    proxy: {
+      '/uploads': {
+        target: 'http://localhost:8081',
+        changeOrigin: true
+      }
+    }
+  },
+});
+```
+
+The `@` alias resolves to `src/`, so you can write `import { useAuth } from '@/context/AuthContext'` from any file depth.

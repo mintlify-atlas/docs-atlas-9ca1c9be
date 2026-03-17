@@ -1,0 +1,361 @@
+---
+title: Database schema
+description: Full PostgreSQL schema for D&D Textil — tables, columns, constraints, indexes, views, and triggers.
+---
+
+The database is named `tienda_digital_textiles_db` and runs on PostgreSQL. The schema contains 19 tables, 3 views, and automatic `updated_at` triggers.
+
+## Tables overview
+
+| # | Table | Description |
+|---|-------|-------------|
+| 1 | `users` | All system users: admins, sellers, clients |
+| 2 | `categories` | Fabric categories (Cotton, Silk, Linen…) |
+| 3 | `products` | Active product catalog |
+| 4 | `product_images` | Images linked to products |
+| 5 | `pending_products` | Seller-submitted products awaiting admin approval |
+| 6 | `pending_product_images` | Images for pending products |
+| 7 | `coupons` | Discount coupons (percentage or fixed) |
+| 8 | `coupon_categories` | Many-to-many: coupon → applicable categories |
+| 9 | `coupon_usage` | Coupon redemption log |
+| 10 | `orders` | Customer orders |
+| 11 | `order_items` | Line items within each order |
+| 12 | `cart_items` | Persistent shopping cart |
+| 13 | `inventory_batches` | Fabric rolls in inventory |
+| 14 | `waste_events` | Fabric waste / defect log |
+| 15 | `stock_thresholds` | Minimum stock alert thresholds |
+| 16 | `bug_reports` | Product quality reports |
+| 17 | `support_tickets` | Customer support tickets |
+| 18 | `support_ticket_photos` | Photos attached to support tickets |
+| 19 | `daily_sales` | Aggregated daily sales totals |
+| 20 | `region_sales` | Sales totals by Colombian department |
+| 21 | `recent_activity` | System activity log |
+| 22 | `system_config` | Key-value system configuration |
+| 23 | `global_banner` | Site-wide announcement banner |
+
+## Table definitions
+
+### `users`
+
+```sql
+CREATE TABLE users (
+    id              SERIAL PRIMARY KEY,
+    name            VARCHAR(150) NOT NULL,
+    email           VARCHAR(255) NOT NULL UNIQUE,
+    password_hash   VARCHAR(255) NOT NULL,
+    role            VARCHAR(20)  NOT NULL DEFAULT 'client'
+                        CHECK (role IN ('admin', 'seller', 'client')),
+    active          BOOLEAN      NOT NULL DEFAULT TRUE,
+    suspended       BOOLEAN      NOT NULL DEFAULT FALSE,
+    suspension_reason TEXT       NULL,
+    commission_rate  DECIMAL(5,2) NULL,  -- sellers only (%)
+    registered_at   TIMESTAMP    NOT NULL DEFAULT NOW(),
+    last_login      TIMESTAMP    NULL,
+    created_at      TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+```
+
+Indexes: `idx_users_email`, `idx_users_role`, `idx_users_active`
+
+### `categories`
+
+```sql
+CREATE TABLE categories (
+    id          SERIAL PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT         NULL,
+    created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+```
+
+Seed values: Algodón, Seda, Lino, Terciopelo, Denim, Gasa, Satén, Tweed, Jersey, Organza, Pana, Encaje, Poliéster.
+
+### `products`
+
+```sql
+CREATE TABLE products (
+    id          SERIAL PRIMARY KEY,
+    name        VARCHAR(255)  NOT NULL,
+    category_id INT           NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
+    price       DECIMAL(12,2) NOT NULL CHECK (price >= 0),
+    seller_id   INT           NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    description TEXT          NULL,
+    material    VARCHAR(255)  NULL,
+    width       VARCHAR(50)   NULL,   -- e.g. '150 cm'
+    weight      VARCHAR(50)   NULL,   -- e.g. '180 g/m²'
+    care        VARCHAR(255)  NULL,
+    stock       INT           NOT NULL DEFAULT 0 CHECK (stock >= 0),
+    featured    BOOLEAN       NOT NULL DEFAULT FALSE,
+    active      BOOLEAN       NOT NULL DEFAULT TRUE,
+    created_at  TIMESTAMP     NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMP     NOT NULL DEFAULT NOW()
+);
+```
+
+Indexes: `idx_products_category`, `idx_products_seller`, `idx_products_featured`, `idx_products_active`
+
+### `product_images`
+
+```sql
+CREATE TABLE product_images (
+    id            SERIAL PRIMARY KEY,
+    product_id    INT  NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    image_url     TEXT NOT NULL,
+    display_order INT  NOT NULL DEFAULT 0,
+    alt_text      VARCHAR(255) NULL,
+    created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
+
+### `pending_products`
+
+```sql
+CREATE TABLE pending_products (
+    id               SERIAL PRIMARY KEY,
+    name             VARCHAR(255)  NOT NULL,
+    description      TEXT          NULL,
+    price            DECIMAL(12,2) NOT NULL CHECK (price >= 0),
+    category         VARCHAR(100)  NOT NULL,
+    seller_id        INT           NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status           VARCHAR(20)   NOT NULL DEFAULT 'pending'
+                         CHECK (status IN ('pending', 'approved', 'rejected')),
+    rejection_reason TEXT          NULL,
+    submitted_at     TIMESTAMP     NOT NULL DEFAULT NOW(),
+    reviewed_at      TIMESTAMP     NULL,
+    reviewed_by      INT           NULL REFERENCES users(id)
+);
+```
+
+### `coupons`
+
+```sql
+CREATE TABLE coupons (
+    id             SERIAL PRIMARY KEY,
+    code           VARCHAR(50)   NOT NULL UNIQUE,
+    discount_type  VARCHAR(20)   NOT NULL CHECK (discount_type IN ('percentage', 'fixed')),
+    discount_value DECIMAL(12,2) NOT NULL CHECK (discount_value > 0),
+    min_purchase   DECIMAL(12,2) NULL DEFAULT 0,
+    first_time_only BOOLEAN      NOT NULL DEFAULT FALSE,
+    max_uses       INT           NULL,
+    usage_count    INT           NOT NULL DEFAULT 0,
+    active         BOOLEAN       NOT NULL DEFAULT TRUE,
+    expires_at     DATE          NULL,
+    created_at     TIMESTAMP     NOT NULL DEFAULT NOW()
+);
+```
+
+### `orders`
+
+```sql
+CREATE TABLE orders (
+    id               SERIAL PRIMARY KEY,
+    client_id        INT           NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    seller_id        INT           NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    total            DECIMAL(12,2) NOT NULL CHECK (total >= 0),
+    status           VARCHAR(30)   NOT NULL DEFAULT 'preparing'
+                         CHECK (status IN ('preparing','shipped','delivered','cancelled','returned')),
+    coupon_id        INT           NULL REFERENCES coupons(id),
+    discount_amount  DECIMAL(12,2) NULL DEFAULT 0,
+    shipping_cost    DECIMAL(12,2) NOT NULL DEFAULT 0,
+    shipping_address TEXT          NULL,
+    notes            TEXT          NULL,
+    order_date       TIMESTAMP     NOT NULL DEFAULT NOW(),
+    shipped_at       TIMESTAMP     NULL,
+    delivered_at     TIMESTAMP     NULL,
+    created_at       TIMESTAMP     NOT NULL DEFAULT NOW(),
+    updated_at       TIMESTAMP     NOT NULL DEFAULT NOW()
+);
+```
+
+Indexes: `idx_orders_client`, `idx_orders_seller`, `idx_orders_status`, `idx_orders_date`
+
+### `order_items`
+
+```sql
+CREATE TABLE order_items (
+    id         SERIAL PRIMARY KEY,
+    order_id   INT           NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    product_id INT           NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+    quantity   INT           NOT NULL CHECK (quantity > 0),
+    unit_price DECIMAL(12,2) NOT NULL CHECK (unit_price >= 0),
+    subtotal   DECIMAL(12,2) NOT NULL GENERATED ALWAYS AS (quantity * unit_price) STORED,
+    created_at TIMESTAMP     NOT NULL DEFAULT NOW()
+);
+```
+
+### `cart_items`
+
+```sql
+CREATE TABLE cart_items (
+    id         SERIAL PRIMARY KEY,
+    user_id    INT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    product_id INT  NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    quantity   INT  NOT NULL DEFAULT 1 CHECK (quantity > 0),
+    added_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id, product_id)
+);
+```
+
+### `inventory_batches`
+
+```sql
+CREATE TABLE inventory_batches (
+    id             VARCHAR(10)   PRIMARY KEY,  -- e.g. R001, R002
+    fabric_type    VARCHAR(150)  NOT NULL,
+    supplier       VARCHAR(255)  NOT NULL,
+    initial_meters DECIMAL(10,2) NOT NULL CHECK (initial_meters > 0),
+    current_meters DECIMAL(10,2) NOT NULL CHECK (current_meters >= 0),
+    status         VARCHAR(20)   NOT NULL DEFAULT 'active'
+                       CHECK (status IN ('active','low','critical','depleted')),
+    created_at     TIMESTAMP     NOT NULL DEFAULT NOW(),
+    last_update    TIMESTAMP     NOT NULL DEFAULT NOW()
+);
+```
+
+### `waste_events`
+
+```sql
+CREATE TABLE waste_events (
+    id          SERIAL PRIMARY KEY,
+    roll_id     VARCHAR(10)   NOT NULL REFERENCES inventory_batches(id) ON DELETE CASCADE,
+    meters      DECIMAL(10,2) NOT NULL CHECK (meters > 0),
+    reason      VARCHAR(30)   NOT NULL
+                    CHECK (reason IN ('factory_defect','cutting_error','damaged',
+                                      'quality_control','other')),
+    description TEXT          NULL,
+    responsible VARCHAR(255)  NULL,
+    user_id     INT           NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    event_date  DATE          NOT NULL DEFAULT CURRENT_DATE,
+    created_at  TIMESTAMP     NOT NULL DEFAULT NOW()
+);
+```
+
+### `stock_thresholds`
+
+```sql
+CREATE TABLE stock_thresholds (
+    id            SERIAL PRIMARY KEY,
+    fabric_type   VARCHAR(150)  NOT NULL UNIQUE,
+    min_meters    DECIMAL(10,2) NOT NULL CHECK (min_meters >= 0),
+    alert_enabled BOOLEAN       NOT NULL DEFAULT TRUE,
+    updated_at    TIMESTAMP     NOT NULL DEFAULT NOW()
+);
+```
+
+### `bug_reports`
+
+```sql
+CREATE TABLE bug_reports (
+    id          SERIAL PRIMARY KEY,
+    product_id  INT NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+    seller_id   INT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    client_id   INT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    title       VARCHAR(255) NOT NULL,
+    description TEXT         NOT NULL,
+    status      VARCHAR(20)  NOT NULL DEFAULT 'open'
+                    CHECK (status IN ('open','in_review','resolved','closed')),
+    priority    VARCHAR(10)  NOT NULL DEFAULT 'medium'
+                    CHECK (priority IN ('low','medium','high','critical')),
+    assigned_to INT          NULL REFERENCES users(id),
+    resolved_at DATE         NULL,
+    created_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+```
+
+### `support_tickets`
+
+```sql
+CREATE TABLE support_tickets (
+    id          SERIAL PRIMARY KEY,
+    client_id   INT          NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    order_id    INT          NULL REFERENCES orders(id) ON DELETE SET NULL,
+    subject     VARCHAR(255) NOT NULL,
+    description TEXT         NOT NULL,
+    priority    VARCHAR(10)  NOT NULL DEFAULT 'medium'
+                    CHECK (priority IN ('low','medium','high','critical')),
+    status      VARCHAR(20)  NOT NULL DEFAULT 'open'
+                    CHECK (status IN ('open','in_progress','resolved','closed')),
+    category    VARCHAR(30)  NOT NULL
+                    CHECK (category IN ('quality','quantity','defect',
+                                        'shipping','payment','other')),
+    assigned_to INT          NULL REFERENCES users(id),
+    resolved_at DATE         NULL,
+    created_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+```
+
+### `system_config`
+
+```sql
+CREATE TABLE system_config (
+    id          SERIAL PRIMARY KEY,
+    key         VARCHAR(100) NOT NULL UNIQUE,
+    value       TEXT         NOT NULL,
+    value_type  VARCHAR(20)  NOT NULL DEFAULT 'string'
+                    CHECK (value_type IN ('string','number','boolean','json')),
+    description VARCHAR(255) NULL,
+    updated_at  TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+```
+
+The `MetricsContext` stores serialized JSON blobs (inventory batches, waste events, stock thresholds, sales data) as rows in this table under keys such as `inventory_batches`, `waste_events`, and `metrics_sales`.
+
+### `global_banner`
+
+```sql
+CREATE TABLE global_banner (
+    id          SERIAL PRIMARY KEY,
+    enabled     BOOLEAN  NOT NULL DEFAULT FALSE,
+    message     TEXT     NOT NULL,
+    banner_type VARCHAR(20) NOT NULL DEFAULT 'info'
+                    CHECK (banner_type IN ('info','warning','success','error')),
+    updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
+
+## Key relationships
+
+```
+users (seller) ──< products >──< order_items >── orders >── users (client)
+                                                    │
+                                               coupons
+
+users (seller) ──< pending_products
+products ──< product_images
+
+users (client) ──< cart_items >── products
+users (client) ──< support_tickets
+users (client) ──< bug_reports >── products
+
+inventory_batches ──< waste_events
+coupons ──< coupon_usage >── users & orders
+coupons ──< coupon_categories
+```
+
+## Views
+
+| View | Description |
+|------|-------------|
+| `vw_seller_summary` | Aggregates per-seller totals: `total_orders`, `total_revenue`, `total_bug_reports` |
+| `vw_stock_status` | Computes `stock_status` (active / low / critical) per fabric type by comparing `current_meters` against `stock_thresholds.min_meters` |
+| `vw_client_orders` | Aggregates per-client totals: `total_orders`, `total_spent`, `last_order_date` |
+
+## Triggers
+
+All mutable tables use a shared `update_updated_at_column()` function to keep `updated_at` current on every `UPDATE`:
+
+```sql
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+Triggers are attached to: `users`, `products`, `orders`, `cart_items`, `bug_reports`, `support_tickets`, `stock_thresholds`, `system_config`.

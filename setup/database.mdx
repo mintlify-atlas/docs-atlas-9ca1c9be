@@ -1,0 +1,245 @@
+---
+title: "Database setup"
+description: "Create the PostgreSQL database, run the schema, and configure the Java backend connection."
+---
+
+D&D Textil uses PostgreSQL as its primary data store. The complete schema is in `database/schema.sql` and includes table definitions, indexes, triggers, views, and seed data.
+
+## PostgreSQL installation
+
+If you do not have PostgreSQL installed, download and install version 14 or later from the official site for your platform, then make sure the `psql` CLI is available in your terminal.
+
+<Note>
+  On macOS, [Postgres.app](https://postgresapp.com/) is a simple way to get started. On Windows, use the official installer from postgresql.org which bundles pgAdmin.
+</Note>
+
+## Create the database
+
+Connect to PostgreSQL as the `postgres` superuser and create a new database:
+
+```sql
+CREATE DATABASE tienda_digital_textiles_db;
+```
+
+Or from the command line:
+
+<CodeGroup>
+
+```bash Linux / macOS
+psql -U postgres -c "CREATE DATABASE tienda_digital_textiles_db;"
+```
+
+```bash Windows (Command Prompt)
+psql -U postgres -c "CREATE DATABASE tienda_digital_textiles_db;"
+```
+
+</CodeGroup>
+
+## Run the schema
+
+Load the full schema and seed data from the project root:
+
+<CodeGroup>
+
+```bash Linux / macOS
+psql -U postgres -d tienda_digital_textiles_db -f database/schema.sql
+```
+
+```bash Windows (Command Prompt)
+psql -U postgres -d tienda_digital_textiles_db -f database\schema.sql
+```
+
+</CodeGroup>
+
+The script runs in a specific order to respect foreign key constraints:
+
+1. Drops all existing tables with `CASCADE`
+2. Creates tables
+3. Creates indexes
+4. Inserts seed data (users, categories, products, orders, coupons, inventory)
+5. Creates triggers for `updated_at` auto-update
+6. Creates three helper views
+
+<Warning>
+  The schema script begins with `DROP TABLE IF EXISTS … CASCADE` for every table. Re-running the script on an existing database **deletes all data**. Only run it when you want a clean reset.
+</Warning>
+
+## Schema overview
+
+The database contains 19 tables organized around the core business entities:
+
+| Table | Description |
+|---|---|
+| `users` | Admins, sellers, and clients. Roles: `admin`, `seller`, `client` |
+| `categories` | Fabric categories (Algodón, Seda, Lino, etc.) |
+| `products` | The main product catalog (fabrics) |
+| `product_images` | One-to-many images per product |
+| `pending_products` | Seller product submissions awaiting admin approval |
+| `orders` | Customer orders with status tracking |
+| `order_items` | Individual line items inside each order |
+| `cart_items` | Persisted shopping cart per user |
+| `coupons` | Discount codes (percentage or fixed amount) |
+| `coupon_categories` | Many-to-many: coupon applicability by category |
+| `coupon_usage` | Tracks which users have used which coupons |
+| `inventory_batches` | Fabric rolls with status: `active`, `low`, `critical`, `depleted` |
+| `waste_events` | Records of fabric waste with reason codes |
+| `stock_thresholds` | Minimum meter alerts per fabric type |
+| `bug_reports` | Quality issue reports submitted by clients |
+| `support_tickets` | Customer support tickets linked to orders |
+| `daily_sales` | Aggregated sales totals by day |
+| `region_sales` | Accumulated sales by Colombian department |
+| `system_config` | Key-value store for global app settings |
+| `global_banner` | Sitewide notification banner configuration |
+
+### Key table definitions
+
+```sql
+CREATE TABLE users (
+    id              SERIAL PRIMARY KEY,
+    name            VARCHAR(150) NOT NULL,
+    email           VARCHAR(255) NOT NULL UNIQUE,
+    password_hash   VARCHAR(255) NOT NULL,
+    role            VARCHAR(20)  NOT NULL DEFAULT 'client'
+                        CHECK (role IN ('admin', 'seller', 'client')),
+    active          BOOLEAN      NOT NULL DEFAULT TRUE,
+    suspended       BOOLEAN      NOT NULL DEFAULT FALSE,
+    commission_rate  DECIMAL(5,2) NULL,  -- sellers only
+    registered_at   TIMESTAMP    NOT NULL DEFAULT NOW(),
+    last_login      TIMESTAMP    NULL
+);
+
+CREATE TABLE products (
+    id              SERIAL PRIMARY KEY,
+    name            VARCHAR(255) NOT NULL,
+    category_id     INT          NOT NULL REFERENCES categories(id),
+    price           DECIMAL(12,2) NOT NULL CHECK (price >= 0),
+    seller_id       INT          NOT NULL REFERENCES users(id),
+    description     TEXT         NULL,
+    material        VARCHAR(255) NULL,
+    width           VARCHAR(50)  NULL,  -- e.g. '150 cm'
+    weight          VARCHAR(50)  NULL,  -- e.g. '180 g/m²'
+    care            VARCHAR(255) NULL,
+    stock           INT          NOT NULL DEFAULT 0,
+    featured        BOOLEAN      NOT NULL DEFAULT FALSE,
+    active          BOOLEAN      NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE orders (
+    id              SERIAL PRIMARY KEY,
+    client_id       INT          NOT NULL REFERENCES users(id),
+    seller_id       INT          NOT NULL REFERENCES users(id),
+    total           DECIMAL(12,2) NOT NULL,
+    status          VARCHAR(30)  NOT NULL DEFAULT 'preparing'
+                        CHECK (status IN ('preparing', 'shipped', 'delivered', 'cancelled', 'returned')),
+    coupon_id       INT          NULL REFERENCES coupons(id),
+    discount_amount DECIMAL(12,2) NULL DEFAULT 0,
+    shipping_cost   DECIMAL(12,2) NOT NULL DEFAULT 0,
+    order_date      TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+```
+
+## Connection configuration
+
+The Java backend connects to PostgreSQL using a JDBC singleton defined in `src/conexion/Conexion.java`. It reads connection settings from environment variables and falls back to hardcoded defaults:
+
+```java
+// src/conexion/Conexion.java
+private static final String URL = System.getenv("DB_URL") != null
+    ? System.getenv("DB_URL")
+    : "jdbc:postgresql://localhost:5432/tienda_digital_textiles_db";
+private static final String USER = System.getenv("DB_USER") != null
+    ? System.getenv("DB_USER")
+    : "postgres";
+private static final String PASSWORD = System.getenv("DB_PASSWORD") != null
+    ? System.getenv("DB_PASSWORD")
+    : "Mp.1025889078";
+```
+
+The connection is a singleton that re-establishes itself automatically if PostgreSQL closes an idle connection:
+
+```java
+if (connection == null || connection.isClosed() || !connection.isValid(3)) {
+    Class.forName("org.postgresql.Driver");
+    connection = DriverManager.getConnection(URL, USER, PASSWORD);
+}
+```
+
+To use a different PostgreSQL password or host, set the environment variables before starting the backend:
+
+<CodeGroup>
+
+```bash Linux / macOS
+export DB_URL=jdbc:postgresql://localhost:5432/tienda_digital_textiles_db
+export DB_USER=postgres
+export DB_PASSWORD=your_password
+java -cp "bin:lib/gson-2.10.1.jar:lib/postgresql-42.7.3.jar" App
+```
+
+```bash Windows (Command Prompt)
+set DB_URL=jdbc:postgresql://localhost:5432/tienda_digital_textiles_db
+set DB_USER=postgres
+set DB_PASSWORD=your_password
+java -cp "bin;lib/gson-2.10.1.jar;lib/postgresql-42.7.3.jar" App
+```
+
+</CodeGroup>
+
+## Seed data
+
+The schema script inserts the following demo records automatically:
+
+| Entity | Count | Notes |
+|---|---|---|
+| Users | 12 | 1 admin, 4 sellers (1 suspended), 7 clients |
+| Categories | 13 | Algodón, Seda, Lino, Terciopelo, Denim, and more |
+| Products | 12 | Fully described with material, width, weight, and care instructions |
+| Product images | 36 | Three placeholder images per product |
+| Orders | 14 | Various statuses: `preparing`, `shipped`, `delivered` |
+| Inventory batches | 10 | Fabric rolls with statuses `active`, `low`, and `critical` |
+| Coupons | 4 | Mix of percentage and fixed-amount codes |
+| Support tickets | 5 | Linked to orders with priorities and statuses |
+
+### Demo credentials
+
+All demo accounts are seeded with the following passwords (SHA-256 hashed at creation from the registration screen):
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@ddtextil.com` | `admin123` |
+| Seller | `vendedor@ddtextil.com` | `vendedor123` |
+| Seller | `maria.gonzalez@ddtextil.com` | `vendedor123` |
+| Seller | `ana.martinez@ddtextil.com` | `vendedor123` |
+| Client | `cliente@ddtextil.com` | `cliente123` |
+| Client | `laura.sanchez@email.com` | `cliente123` |
+
+<Warning>
+  These credentials are for local development only. Never deploy this seed data to a production database.
+</Warning>
+
+## Helper views
+
+The schema creates three views you can query directly for reporting:
+
+```sql
+-- Seller performance: orders, revenue, bug reports
+SELECT * FROM vw_seller_summary;
+
+-- Current stock levels vs. thresholds by fabric type
+SELECT * FROM vw_stock_status;
+
+-- Order history and total spending per client
+SELECT * FROM vw_client_orders;
+```
+
+## System configuration
+
+The `system_config` table stores global application settings as key-value pairs:
+
+| Key | Value | Description |
+|---|---|---|
+| `tax_rate` | `0.19` | IVA tax rate (19%) |
+| `shipping_cost` | `15000` | Standard shipping cost (COP) |
+| `free_shipping_threshold` | `200000` | Minimum order for free shipping (COP) |
+| `low_stock_threshold` | `20` | Units below which stock is flagged as low |
+| `primary_color` | `#8B5CF6` | Theme primary color |
+| `maintenance_mode` | `false` | Toggles maintenance mode across the app |

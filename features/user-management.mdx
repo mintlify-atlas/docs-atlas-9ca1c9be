@@ -1,0 +1,209 @@
+---
+title: User management
+description: How to view and manage users, roles, and accounts — plus seller metrics, client segmentation, vendor moderation, and system configuration.
+---
+
+User management spans several admin routes, from the main user table to per-role analytics and vendor controls. All of these pages require the **admin** role.
+
+## Viewing and filtering users (`/admin/usuarios`)
+
+The user management page shows a paginated table of every registered account on the platform.
+
+### Table columns
+
+| Column | What is shown |
+|---|---|
+| **Usuario** | Full name and email address |
+| **Rol** | Colour-coded badge: purple = Admin, blue = Seller, green = Client |
+| **Estado** | Green **Activo** or red **Inactivo** badge |
+| **Registro** | Account creation date (Colombia locale) |
+| **Último Acceso** | Most recent login date |
+| **Acciones** | Edit-role and toggle-active controls |
+
+### Filtering
+
+Two controls appear above the table:
+
+- **Search box** — filters by name or email in real time.
+- **Role dropdown** — narrows results to Administrators, Sellers, or Clients; defaults to "All roles".
+
+The result count updates live: `Total: N usuarios`.
+
+### Role assignment
+
+<Steps>
+  <Step title="Open the role editor">
+    Click the edit (pencil) icon in the **Acciones** column for the user you want to update.
+  </Step>
+  <Step title="Select the new role">
+    A dropdown replaces the role badge inline. Choose **Administrador**, **Vendedor**, or **Cliente**.
+  </Step>
+  <Step title="Save the change">
+    Click **Guardar**. A success notification confirms the update. Click **Cancelar** to discard the change without saving.
+  </Step>
+</Steps>
+
+<Warning>
+  Changing a user's role to **admin** grants full access to the admin panel immediately. Make sure you intend to elevate the account before saving.
+</Warning>
+
+### Activating and deactivating accounts
+
+Click the toggle icon in the **Acciones** column to flip a user's active state. Active accounts show a green toggle; inactive accounts show red. The platform shows a success notification confirming the change (`Usuario [name] activado/desactivado`).
+
+### Role summary cards
+
+Below the table three cards show the total count of Administrators, Sellers, and Clients currently in the system.
+
+## Seller metrics (`/admin/vendedores`)
+
+This page gives you a comparative view of every seller's performance.
+
+### Bar chart comparison
+
+A `recharts` `BarChart` renders at the top, comparing total sales (COP) per seller by first name.
+
+### Seller performance table
+
+| Column | What is shown |
+|---|---|
+| **Vendedor** | Avatar, full name, and email |
+| **Ventas Totales** | Cumulative revenue attributed to this seller |
+| **Pedidos** | Total orders with completed sub-count |
+| **Ticket Promedio** | Average order value |
+| **Reportes** | Quality/bug report count, coloured green (0), yellow (1–2), or red (3+) |
+| **Estado** | Active or Inactive badge |
+
+Click any row to expand a detail panel showing four cards: Ingresos Generados, Pedidos Completados (+ pending), Ticket Promedio, and Reportes Recibidos with percentage rate. Click the same row again to collapse it.
+
+### Summary row
+
+Three cards below the table surface the top seller, average sales per seller, and total quality reports across all sellers.
+
+## Client metrics (`/admin/clientes`)
+
+This page segments clients by lifetime spend and shows your top 10 highest-value customers.
+
+### Segmentation cards
+
+| Segment | Threshold |
+|---|---|
+| **VIP** | Total spent > $1,000,000 COP |
+| **Regular** | Total spent $300,000 – $1,000,000 COP |
+| **Nuevo** | Total spent < $300,000 COP |
+
+Each card shows the count and aggregate value for that segment.
+
+### Top 10 clients table
+
+Sorted by total spend, each row shows:
+
+- Position (gold/silver/bronze badges for top 3)
+- Name and email
+- Total spent
+- Number of orders
+- Average order value
+- Purchase frequency (e.g., "Every 14 days" or "First purchase")
+- Date of last purchase
+
+### Summary stats
+
+Four cards below the table show average client value, average purchases per client, best client name + amount, and platform-wide average ticket.
+
+## Vendor moderation — approval queue (`/admin/moderacion/aprobacion`)
+
+When a seller submits a new product it enters the approval queue with a **Pendiente** status. You must approve or reject it before it appears in the public catalog.
+
+<Steps>
+  <Step title="Filter by seller (optional)">
+    Use the seller dropdown at the top right to focus on one vendor's submissions.
+  </Step>
+  <Step title="Preview the product">
+    Click **Ver** on a product card to open a full-screen preview with the product image, name, price, description, and seller info.
+  </Step>
+  <Step title="Approve or reject">
+    Click **Aprobar** to publish the product to the catalog immediately. Click **Rechazar** to open the rejection modal, enter a reason, then confirm. The seller sees your rejection reason so they can fix the listing.
+  </Step>
+</Steps>
+
+<Note>
+  Approving a product triggers a catalog refresh (`refreshProducts`) so the change is visible in the storefront immediately.
+</Note>
+
+When the queue is empty, the page shows a confirmation message: "¡Todo al día! No hay productos pendientes de aprobación".
+
+## Vendor performance (`/admin/moderacion/vendedores`)
+
+This page combines a top-5 sales comparison chart with a management table that gives you direct control over seller commissions and account status.
+
+### Summary cards
+
+Four cards show: total sellers, active sellers, suspended sellers, and the platform-wide average commission rate.
+
+### Dual-axis bar chart
+
+A `recharts` `BarChart` with two Y-axes plots the top 5 sellers simultaneously on sales volume (thousands COP, purple bars) and order count (amber bars).
+
+### Commission rate editing
+
+Click the commission percentage shown in the **Comisión %** column to activate an inline number input. Press Enter or click away to save. The rate accepts decimal values.
+
+### Suspending a seller
+
+<Steps>
+  <Step title="Click the toggle control">
+    In the **Control** column, click the red toggle icon next to an active seller.
+  </Step>
+  <Step title="Enter a suspension reason">
+    A modal prompts you to explain the reason (e.g., "Multiple quality reports"). The reason is stored and displayed on the seller's row.
+  </Step>
+  <Step title="Confirm">
+    Click **Confirmar Suspensión**. The seller's row becomes semi-transparent and their status badge changes to **Suspendido**.
+  </Step>
+  <Step title="Reactivate">
+    Click the green toggle icon on a suspended seller to immediately reactivate their account (no reason prompt required).
+  </Step>
+</Steps>
+
+<Warning>
+  Suspending a seller prevents them from accessing their dashboard. Ensure you have reviewed their quality report rate and sales history before taking action.
+</Warning>
+
+## System configuration (`/admin/configuracion`)
+
+This page lets you control global platform settings. All changes take effect after you click **Guardar Configuración**.
+
+### Configuration sections
+
+<Accordion title="General information">
+  Set the **Nombre del Sitio** (site name) that appears in the browser tab and platform headers.
+</Accordion>
+
+<Accordion title="Theme colours">
+  Pick **Color Primario**, **Color Secundario**, and **Color de Acento** using colour pickers or hex input fields. Changes affect button colours, link colours, and accent elements throughout the storefront.
+</Accordion>
+
+<Accordion title="Sales settings">
+
+  | Field | Purpose |
+  |---|---|
+  | **Tasa de Impuesto (%)** | Tax rate applied at checkout (e.g., 19 for Colombia IVA) |
+  | **Costo de Envío ($)** | Flat shipping fee in COP |
+  | **Umbral Envío Gratis ($)** | Order value above which shipping is waived |
+  | **Umbral Stock Bajo (metros)** | Global low-stock threshold in metres (also used in inventory alerts) |
+
+</Accordion>
+
+<Accordion title="Global banner">
+  Toggle a sitewide announcement banner on or off, set its message text, and choose the banner type:
+
+  - **Información** — blue banner
+  - **Éxito** — green banner
+  - **Advertencia** — yellow banner
+
+  A live preview renders below the form when the banner is enabled.
+</Accordion>
+
+<Accordion title="Display preferences">
+  Check **Activar modo oscuro por defecto para nuevos usuarios** to default new accounts to dark mode.
+</Accordion>

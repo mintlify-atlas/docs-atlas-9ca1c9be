@@ -1,0 +1,89 @@
+---
+title: Seller order management
+description: How sellers view and update the status of incoming orders in D&D Textil.
+---
+
+Sellers manage their orders at `/vendedor/pedidos`. The page shows only orders attributed to the currently logged-in seller.
+
+## Order status summary
+
+Four stat cards at the top of the page give a real-time snapshot:
+
+| Card | Description |
+|---|---|
+| **Total Pedidos** | All orders for this seller |
+| **Preparando** | Orders currently being prepared |
+| **Enviados** | Orders marked as shipped |
+| **Entregados** | Orders that have been delivered |
+
+## Order statuses
+
+Seller-side orders use three statuses:
+
+| Status | Label | Meaning |
+|---|---|---|
+| `preparing` | Preparando | Order received; being prepared for shipment |
+| `shipped` | Enviado | Handed off to courier |
+| `delivered` | Entregado | Confirmed delivered to client |
+
+## Filtering orders
+
+Use the filter buttons above the orders table to show all orders or narrow by status:
+
+- **Todos** — all orders (default)
+- **Preparando** — orders in preparation
+- **Enviados** — shipped orders
+- **Entregados** — delivered orders
+
+The count of matching orders updates in the table subtitle as you switch filters.
+
+## Orders table
+
+Each row in the table displays:
+
+| Column | Content |
+|---|---|
+| **Pedido** | Order ID prefixed with `#` |
+| **Cliente** | Client's full name (looked up from the users list by client ID) |
+| **Fecha** | Order date formatted as `DD MMM YYYY` in Colombian locale |
+| **Items** | Number of items in the order |
+| **Total** | Order total formatted as COP currency |
+| **Estado** | Status badge with icon and color |
+| **Acciones** | Status advancement button |
+
+**Status badge colors:**
+
+| Status | Badge color |
+|---|---|
+| `preparing` | Yellow |
+| `shipped` | Blue |
+| `delivered` | Green |
+
+## Advancing an order's status
+
+Status updates are one-directional and move through a fixed sequence:
+
+<Steps>
+  <Step title="Mark as shipped">
+    For orders in `preparing` status, click **Marcar Enviado**. The order status updates to `shipped` and the client's tracking page reflects the change immediately.
+  </Step>
+  <Step title="Mark as delivered">
+    For orders in `shipped` status, click **Marcar Entregado**. The order moves to `delivered`.
+  </Step>
+  <Step title="Completed">
+    Delivered orders show **Completado** in the actions column. No further status change is available from the seller side.
+  </Step>
+</Steps>
+
+A success notification confirms each status change with the human-readable label (e.g. "Estado del pedido actualizado a Enviado").
+
+<Note>
+  Status updates are applied through the shared `MetricsContext` (`updateOrderStatus`), which propagates the change to both the seller order view and the client tracking view in real time without a page refresh.
+</Note>
+
+## Empty state
+
+If no orders match the active filter, the table displays an empty state message:
+
+- When **Todos** is selected with no orders: "No tienes pedidos aún"
+- When a specific status filter has no matches: "No hay pedidos en estado \"[status label]\""

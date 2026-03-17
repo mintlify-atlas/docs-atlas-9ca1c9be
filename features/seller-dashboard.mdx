@@ -1,0 +1,94 @@
+---
+title: Seller dashboard
+description: The seller portal for managing products, viewing metrics, and monitoring inventory in D&D Textil.
+---
+
+Sellers and admins access their portal at `/vendedor`. The seller dashboard shows personal sales metrics, a 7-day revenue chart, top-selling products, and a full inventory management table.
+
+## Access
+
+The seller portal is restricted to users with the `seller` or `admin` role. Unauthenticated users are redirected to `/login`; users with the `client` role are redirected to `/`.
+
+## Seller portal navigation
+
+| Route | Section |
+|---|---|
+| `/vendedor` | Dashboard, metrics, and product management |
+| `/vendedor/pedidos` | Order management |
+| `/vendedor/stock` | Stock alerts |
+
+## Metrics overview
+
+The top of the dashboard displays four metric cards scoped to the **current seller only**:
+
+<CardGroup cols={2}>
+  <Card title="Mis Ventas Totales" icon="dollar-sign">
+    Total revenue generated from all of this seller's completed orders, formatted as COP currency.
+  </Card>
+  <Card title="Mis Pedidos" icon="shopping-bag">
+    Total number of orders attributed to this seller, with a subtitle showing how many are completed.
+  </Card>
+  <Card title="Ticket Promedio" icon="trending-up">
+    Average order value (total sales ÷ total orders).
+  </Card>
+  <Card title="Reportes Recibidos" icon="alert-triangle">
+    Number of quality or support reports filed against this seller's products.
+  </Card>
+</CardGroup>
+
+## Sales chart
+
+A line chart beneath the metric cards plots daily revenue for the **last 7 days**, using only orders attributed to the current seller. Dates are formatted as `DD MMM` (e.g. `15 ene`).
+
+## Top products
+
+If the seller has recorded sales, the **Mis Productos Más Vendidos** section shows the top 5 products ranked by units sold. Each card displays the product name and total sales count.
+
+## Inventory management
+
+The **Mi Inventario** table lists all products assigned to the current seller. Each row shows:
+
+| Column | Details |
+|---|---|
+| **Producto** | Product thumbnail, name, and internal ID |
+| **Precio** | Price per meter in COP |
+| **Stock** | Available meters. Shown in red if below 20 m, green otherwise |
+| **Categoría** | Fabric category |
+| **Acciones** | Edit and delete buttons |
+
+### Editing a product
+
+<Steps>
+  <Step title="Click the edit icon">
+    Click the pencil icon in the **Acciones** column for the product you want to update. The row switches to inline edit mode.
+  </Step>
+  <Step title="Update fields">
+    You can edit the product **name**, **price** (numeric), **stock** (numeric), and optionally upload a new **product image**.
+
+    When a new image is selected, the file is read as a Base64 data URI in the browser. On save, it is uploaded separately to:
+
+    ```javascript
+    PUT http://localhost:8081/api/products/{productId}/image
+    Content-Type: application/json
+
+    { "image": "data:image/jpeg;base64,..." }
+    ```
+
+    The API returns a hosted URL that replaces the Base64 string in the form before the final update is saved.
+  </Step>
+  <Step title="Save or cancel">
+    Click the **save** icon (checkmark) to persist changes. Both the metrics context and the product catalog context are refreshed immediately. Click the **X** icon to discard changes.
+  </Step>
+</Steps>
+
+### Adding a product
+
+Click **Nuevo Producto** in the inventory table header. This button is present in the UI; the product creation flow connects to the product management backend.
+
+### Deleting a product
+
+Click the trash icon and confirm the dialog. The product is removed from the seller's inventory immediately.
+
+<Warning>
+  Deleting a product is permanent. Orders that reference a deleted product will still display the order record, but the product thumbnail will fall back to a placeholder image.
+</Warning>

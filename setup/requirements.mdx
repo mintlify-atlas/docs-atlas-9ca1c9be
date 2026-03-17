@@ -1,0 +1,103 @@
+---
+title: "Requirements"
+description: "System requirements for running D&D Textil locally."
+---
+
+This page lists everything you need on your machine before installing D&D Textil.
+
+## Runtime dependencies
+
+### Node.js and npm
+
+The frontend toolchain is built on Vite 5, which requires **Node.js 18 or later**.
+
+| Package | Required version | Used for |
+|---|---|---|
+| Node.js | ≥ 18 | Running Vite dev server and build toolchain |
+| npm | ≥ 9 | Installing packages (`npm install`, `npm run dev`) |
+
+<Tip>
+  Use [nvm](https://github.com/nvm-sh/nvm) (Linux/macOS) or [nvm-windows](https://github.com/coreybutler/nvm-windows) to manage multiple Node.js versions on the same machine.
+</Tip>
+
+### Java JDK
+
+The backend is a plain Java HTTP server using the built-in `com.sun.net.httpserver` package. There is no build framework — the source is compiled directly with `javac` and run with `java`.
+
+| Package | Required version | Notes |
+|---|---|---|
+| Java JDK | ≥ 11 | `com.sun.net.httpserver` is available from JDK 11+ |
+
+<Note>
+  The `JAVA_HOME` environment variable should point to your JDK installation. Both OpenJDK and Oracle JDK work.
+</Note>
+
+### PostgreSQL
+
+The backend connects to PostgreSQL on `localhost:5432` by default.
+
+| Package | Required version | Notes |
+|---|---|---|
+| PostgreSQL | ≥ 14 | Schema uses `GENERATED ALWAYS AS … STORED` (requires PostgreSQL 12+) and standard SERIAL / TIMESTAMP types |
+
+## Bundled Java libraries
+
+The following JARs are already included in `backend-java/conexionPostgres/lib/` and do not need to be downloaded separately:
+
+| Library | Version | Purpose |
+|---|---|---|
+| `gson-2.10.1.jar` | 2.10.1 | JSON serialization/deserialization for API responses |
+| `postgresql-42.7.3.jar` | 42.7.3 | JDBC driver for connecting to PostgreSQL |
+
+## Frontend npm packages
+
+All frontend packages are declared in `package.json` and installed via `npm install`. Key dependencies:
+
+| Package | Version | Purpose |
+|---|---|---|
+| `react` | ^18.3.1 | UI framework |
+| `react-dom` | ^18.3.1 | DOM rendering |
+| `react-router-dom` | ^6.22.0 | Client-side routing |
+| `framer-motion` | ^11.0.5 | Animations |
+| `react-hook-form` | ^7.71.1 | Form state management |
+| `zod` | ^4.3.6 | Schema validation |
+| `recharts` | ^3.7.0 | Charts and analytics visualizations |
+| `react-icons` | ^5.0.1 | Icon library |
+| `vite` | ^5.4.11 | Build tool and dev server |
+| `tailwindcss` | ^3.4.1 | Utility-first CSS framework |
+
+## Browser support
+
+D&D Textil targets modern evergreen browsers. Tailwind CSS and the Vite build output use standard ES modules.
+
+| Browser | Support |
+|---|---|
+| Chrome | Latest 2 versions |
+| Firefox | Latest 2 versions |
+| Edge | Latest 2 versions |
+| Safari | Latest 2 versions |
+
+<Note>
+  Internet Explorer is not supported. The application uses ES module syntax and modern CSS features that are not available in IE.
+</Note>
+
+## Hardware recommendations
+
+These are guidelines for a comfortable local development experience:
+
+| Resource | Minimum | Recommended |
+|---|---|---|
+| RAM | 4 GB | 8 GB |
+| Disk space | 500 MB | 1 GB (for node_modules and DB data) |
+| CPU | Any dual-core | Any modern multi-core |
+| OS | Windows 10, macOS 11, Ubuntu 20.04 | Latest stable release |
+
+## Ports used
+
+Make sure the following ports are available on your machine:
+
+| Port | Service |
+|---|---|
+| `3001` | Vite dev server (React frontend) |
+| `8081` | Java HTTP API server |
+| `5432` | PostgreSQL database |

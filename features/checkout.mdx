@@ -1,0 +1,145 @@
+---
+title: "Checkout"
+description: "Complete your delivery information, review the order summary, and confirm your order at /checkout."
+keywords: ["checkout", "order", "shipping", "form", "validation", "confirmation"]
+---
+
+## Overview
+
+The checkout flow takes you from a confirmed cart to a placed order. It consists of three pages:
+
+| Route | Purpose |
+|---|---|
+| `/checkout` | Fill in delivery details and review the order summary |
+| `/pago` | Payment processing page |
+| `/confirmacion` | Order confirmation with order number and summary |
+
+## Cart guard
+
+The `/checkout` page watches `cartItems` on mount. If the cart is empty, it redirects you to `/carrito` immediately:
+
+```jsx
+React.useEffect(() => {
+    if (cartItems.length === 0) {
+        navigate('/carrito');
+    }
+}, [cartItems, navigate]);
+```
+
+This means you cannot access `/checkout` directly with an empty cart.
+
+<Warning>
+  If you clear your browser's `localStorage` mid-checkout, the cart empties and you are redirected back to `/carrito`.
+</Warning>
+
+## Page layout
+
+The checkout page uses a two-thirds / one-third grid:
+
+- **Left (2/3):** `CheckoutForm` with contact and shipping fields.
+- **Right (1/3):** `OrderSummary` with a sticky scrolling panel.
+
+## Checkout form fields
+
+The `CheckoutForm` component is divided into two sections.
+
+### Contact information
+
+| Field | Name attribute | Type | Required | Validation |
+|---|---|---|---|---|
+| Nombre Completo | `fullName` | `text` | Yes | Non-empty; minimum 3 characters |
+| Correo Electrónico | `email` | `email` | Yes | Must match `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` |
+| Teléfono | `phone` | `tel` | Yes | Must be exactly 10 digits (spaces stripped before check) |
+
+### Shipping address
+
+| Field | Name attribute | Type | Required | Validation |
+|---|---|---|---|---|
+| Dirección | `address` | `text` | Yes | Non-empty |
+| Ciudad | `city` | `text` | Yes | Non-empty |
+| Departamento | `state` | `text` | Yes | Non-empty |
+| Código Postal | `zipCode` | `text` | Yes | Non-empty |
+| Notas de Entrega | `notes` | `textarea` | No | No validation |
+
+<Note>
+  The **Notas de Entrega** field is the only optional field. All other fields must be filled before you can submit the form.
+</Note>
+
+## Form validation
+
+Validation runs in two modes:
+
+- **Real-time:** Each field is validated as you type (`onChange`). Error messages appear below the field immediately.
+- **On submit:** All required fields are re-validated when you click **Confirmar Pedido**. The form does not submit if any required field has an error.
+
+Error messages are shown in red text below the relevant input:
+
+| Field | Example error message |
+|---|---|
+| `fullName` | `El nombre debe tener al menos 3 caracteres` |
+| `email` | `Correo electrónico inválido` |
+| `phone` | `Teléfono inválido (10 dígitos)` |
+| Any required field (empty) | `El [campo] es requerido` |
+
+Inputs with an active error display a red border (`border-red-500`).
+
+## Order summary sidebar
+
+The `OrderSummary` component stays sticky at `top: 24` while you scroll through the form. It shows:
+
+- A scrollable list of cart items (max height 256 px) with thumbnail, name, quantity, unit price, and line total.
+- The same totals breakdown as the cart page: subtotal, coupon discount (if applied), shipping, and IVA (19%).
+- A live **shipping information** section that populates as you fill in the form fields — it appears as soon as `fullName` is non-empty.
+
+## Pricing calculations
+
+The `OrderSummary` and `Checkout` page both apply the same calculation logic:
+
+| Line | Formula |
+|---|---|
+| Subtotal | `Σ (price × quantity)` |
+| Coupon discount | `percentage`: `subtotal × (value / 100)`; `fixed`: flat `value`; both capped at subtotal |
+| Discounted subtotal | `subtotal − discount` |
+| Shipping | `$0` if discounted subtotal `≥ $100,000`; otherwise `$15,000` |
+| IVA | `discountedSubtotal × 0.19` |
+| **Total** | `discountedSubtotal + shipping + IVA` |
+
+## Submitting the order
+
+When you click **Confirmar Pedido** and the form passes validation:
+
+<Steps>
+  <Step title="Order number generated">
+    A unique order number is created using `DD` + the last 8 digits of `Date.now()` — for example, `DD12345678`.
+  </Step>
+  <Step title="Order data written to localStorage">
+    The full order object is saved under the key `lastOrder`. It includes: `orderNumber`, `items`, `customerInfo`, `subtotal`, `discount`, `couponCode`, `shipping`, `tax`, `total`, and `date`.
+  </Step>
+  <Step title="Redirected to payment">
+    The app navigates to `/pago` for payment processing.
+  </Step>
+</Steps>
+
+## Payment page (/pago)
+
+After the order data is saved, you are redirected to `/pago` for payment. On successful payment, the flow continues to `/confirmacion`.
+
+## Order confirmation (/confirmacion)
+
+The confirmation page reads `lastOrder` from `localStorage` and displays:
+
+- An animated green checkmark.
+- The heading **¡Pedido Confirmado!** with your name.
+- A card showing the order number (monospace font) and order date.
+- A full breakdown of ordered items with thumbnails, quantities, and prices.
+- Subtotal, shipping, IVA, and total.
+- Your shipping address as entered in the form.
+- A blue notice confirming that a confirmation email was sent to your email address.
+
+On mount, the confirmation page also calls `clearCart()` to empty the cart, and schedules removal of `lastOrder` from `localStorage` on unmount.
+
+<Info>
+  If you navigate to `/confirmacion` without a prior order in `localStorage`, the page redirects to `/` immediately.
+</Info>
+
+From the confirmation page you can click **Volver al Inicio** to return to the homepage or **Seguir Comprando** to return to `/catalogo`.

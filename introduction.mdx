@@ -1,0 +1,74 @@
+---
+title: "D&D Textil - Tienda Digital"
+description: "Full-stack digital textile store with multi-role dashboards, product catalog, and order management."
+---
+
+## What is D&D Textil?
+
+D&D Textil is a full-stack digital textile store built for SENA's ADSO program. It provides a complete e-commerce experience for buying and selling textile fabrics, with dedicated portals for customers, sellers, and administrators.
+
+The platform combines a **React 18** frontend with a **Java backend** connected to a **PostgreSQL** database, offering a real-world web application architecture with role-based access control.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get the application running locally in minutes
+  </Card>
+  <Card title="Installation" icon="download" href="/setup/installation">
+    Step-by-step setup for all components
+  </Card>
+  <Card title="Shopping Features" icon="bag-shopping" href="/features/catalog">
+    Explore the product catalog and checkout flow
+  </Card>
+  <Card title="Admin Panel" icon="shield-halved" href="/features/admin-overview">
+    Manage users, inventory, and analytics
+  </Card>
+</CardGroup>
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Product Catalog" icon="store">
+    Browse fabrics with category filters, price range sliders, and sorting options. Responsive grid layout works on all screen sizes.
+  </Card>
+  <Card title="Shopping Cart" icon="cart-shopping">
+    Add products, modify quantities, and persist your cart across sessions with localStorage. Automatic total calculations.
+  </Card>
+  <Card title="Role-Based Access" icon="users">
+    Three distinct user roles — **client**, **seller**, and **admin** — each with dedicated dashboards and protected routes.
+  </Card>
+  <Card title="Admin Analytics" icon="chart-bar">
+    Sales heat maps, rotation rankings, returns analysis, and revenue projections for data-driven decisions.
+  </Card>
+  <Card title="Seller Portal" icon="shop">
+    Manage product listings, process orders, and monitor stock alerts from a dedicated seller dashboard.
+  </Card>
+  <Card title="Dark Mode" icon="moon">
+    Full dark mode support via Tailwind CSS class strategy, with user preference persisted in localStorage.
+  </Card>
+</CardGroup>
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, Vite, Tailwind CSS |
+| Animations | Framer Motion |
+| Routing | React Router v6 |
+| Forms | React Hook Form + Zod |
+| Charts | Recharts |
+| Backend | Java (HTTP Server) |
+| Database | PostgreSQL |
+
+## User roles
+
+D&D Textil has three distinct user roles, each with different access levels:
+
+| Role | Spanish | Access |
+|---|---|---|
+| `client` | Cliente | Shopping, order history, wishlist, support tickets |
+| `seller` | Vendedor | Product management, order processing, stock alerts |
+| `admin` | Administrador | Full platform access including all seller + analytics + user management |
+
+<Note>
+The admin role inherits all seller capabilities. Routes protected with `roles={['seller', 'admin']}` are accessible by both.
+</Note>

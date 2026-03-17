@@ -1,0 +1,140 @@
+---
+title: Architecture overview
+description: High-level system architecture for D&D Textil — a three-tier digital textile store.
+---
+
+D&D Textil is a full-stack SaaS application built on a classic three-tier architecture: a React 18 frontend, a Java HTTP server backend, and a PostgreSQL database.
+
+## System tiers
+
+| Tier | Technology | Port |
+|------|-----------|------|
+| Frontend | React 18 + Vite + Tailwind CSS | `3001` (dev) |
+| Backend | Java HTTP server (`com.sun.net.httpserver`) | `8081` |
+| Database | PostgreSQL | `5432` |
+
+## Request flow
+
+Every user interaction follows this path:
+
+```
+Browser (React)
+  → fetch('http://localhost:8081/api/...')
+  → Java ApiServer (HttpServer)
+  → DAO layer (JDBC PreparedStatement)
+  → PostgreSQL (tienda_digital_textiles_db)
+  ← JSON response
+  ← React Context state update
+  ← UI re-render
+```
+
+<Note>
+The Vite dev server proxies `/uploads` requests to `http://localhost:8081`, so product images served from the Java backend are accessible at the same origin as the frontend during development.
+</Note>
+
+## Component diagram
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   Browser (port 3001)               │
+│                                                     │
+│  ┌──────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │  React   │  │   Context    │  │ React Router │  │
+│  │  Pages   │◄─│  Providers   │  │  (BrowserR.) │  │
+│  └────┬─────┘  └──────────────┘  └──────────────┘  │
+│       │  fetch()                                    │
+└───────┼─────────────────────────────────────────────┘
+        │ HTTP/JSON
+┌───────▼─────────────────────────────────────────────┐
+│               Java ApiServer (port 8081)            │
+│                                                     │
+│  ApiServer.java (HttpServer)                        │
+│  ├── AuthHandler     /api/login, /api/register      │
+│  ├── ProductsHandler /api/products                  │
+│  ├── UsersHandler    /api/users                     │
+│  ├── OrdersHandler   /api/orders                    │
+│  ├── CouponsHandler  /api/coupons                   │
+│  ├── ConfigHandler   /api/config                    │
+│  ├── SupportHandler  /api/support                   │
+│  └── StaticFiles     /uploads                       │
+│                                                     │
+│  DAO layer (JDBC)                                   │
+│  ├── AuthDAO / ProductDAO / UserDAO                 │
+│  ├── OrderDAO / CouponDAO                           │
+│  └── ConfigDAO / SupportDAO                         │
+└───────┬─────────────────────────────────────────────┘
+        │ JDBC (postgresql-42.7.3.jar)
+┌───────▼─────────────────────────────────────────────┐
+│         PostgreSQL (port 5432)                      │
+│         Database: tienda_digital_textiles_db        │
+│         19 tables + 3 views + triggers              │
+└─────────────────────────────────────────────────────┘
+```
+
+## Key design decisions
+
+<CardGroup cols={2}>
+  <Card title="Context API for state" icon="layers">
+    Six React Context providers (Auth, Cart, Product, Notification, UI, Metrics) wrap the entire app in `AppProviders.jsx`. No external state library (Redux/Zustand) is used.
+  </Card>
+  <Card title="localStorage persistence" icon="database">
+    The `useLocalStorage` custom hook persists cart items, authenticated user, dark mode preference, and applied coupon across browser sessions.
+  </Card>
+  <Card title="SHA-256 passwords" icon="lock">
+    `AuthDAO.java` hashes passwords with `MessageDigest.getInstance("SHA-256")` before storing them. The `password_hash` field is stripped from the user object before it reaches `localStorage`.
+  </Card>
+  <Card title="Graceful offline fallback" icon="wifi-off">
+    `ProductContext` and `MetricsContext` ship with static mock data. If the Java backend is unreachable, the app continues to function with the bundled fallback data.
+  </Card>
+</CardGroup>
+
+## Project directory structure
+
+```
+tienda digital de telas/
+├── src/
+│   ├── App.jsx                  # Root component — routing
+│   ├── main.jsx                 # ReactDOM.createRoot entry point
+│   ├── index.css
+│   ├── components/
+│   │   ├── AppProviders.jsx     # Context provider tree
+│   │   ├── ProtectedRoute.jsx   # Role-aware route guard
+│   │   └── Toast.jsx
+│   ├── context/
+│   │   ├── AuthContext.jsx
+│   │   ├── CartContext.jsx
+│   │   ├── ProductContext.jsx
+│   │   ├── NotificationContext.jsx
+│   │   ├── UIContext.jsx
+│   │   └── MetricsContext.jsx
+│   ├── hooks/
+│   │   ├── useDarkMode.js
+│   │   └── useLocalStorage.js
+│   ├── utils/
+│   │   └── formatters.js
+│   ├── data/
+│   │   ├── products.json        # Static fallback data
+│   │   └── mockData.js
+│   └── pages/
+│       ├── Home.jsx
+│       ├── Catalog.jsx
+│       ├── client/
+│       ├── seller/
+│       └── admin/
+├── database/
+│   └── schema.sql
+├── backend-java/
+│   └── conexionPostgres/
+│       ├── src/
+│       │   ├── App.java
+│       │   ├── api/             # HTTP handlers
+│       │   ├── conexion/        # JDBC singleton
+│       │   ├── dao/             # Data access objects
+│       │   └── models/          # Java model classes
+│       └── lib/
+│           ├── gson-2.10.1.jar
+│           └── postgresql-42.7.3.jar
+├── package.json
+├── vite.config.js
+└── tailwind.config.js
+```

@@ -1,0 +1,80 @@
+---
+title: Admin panel overview
+description: A complete reference for the D&D Textil admin dashboard — what it shows, how to navigate it, and where every admin route leads.
+---
+
+The admin panel (`/admin`) is the central hub for managing every aspect of D&D Textil. When you open it you immediately see live metrics, a 7-day sales chart, top sellers, and recent platform activity — all pulled from live order and user data.
+
+<Note>
+  You must have the **admin** role to access any route under `/admin`. Attempting to visit these pages with a seller or client account redirects you to your own dashboard.
+</Note>
+
+## What the dashboard shows
+
+The overview page surfaces four global metric cards at the top:
+
+| Metric | What it shows |
+|---|---|
+| **Ventas Totales** | Cumulative revenue from all orders, with a +12.5% trend indicator |
+| **Total Usuarios** | Count of all users on the platform, with a sub-label showing the number of active sellers |
+| **Pedidos** | Total order count plus the average order ticket |
+| **Reportes Calidad** | Total quality/bug reports submitted, broken down into open vs. in-review/resolved |
+
+Below the cards you see:
+
+- A **7-day sales line chart** rendered with the `recharts` `LineChart` component, showing daily sales in Colombian pesos (COP).
+- A **Top Sellers** table listing the top 5 sellers by total revenue, each with their name, order count, revenue, and a +12% trend badge.
+- A **Recent Activity** feed showing the last 6 platform events (new orders, user logins, product updates) with timestamps and amounts.
+
+## Module sections
+
+Below the live data, the dashboard is organised into five module groups. Each group is a card with icon tiles that navigate directly to the relevant admin sub-section.
+
+<CardGroup cols={2}>
+  <Card title="Inventory management" icon="boxes-stacked" href="/features/inventory">
+    Batch/roll control, waste calculator, stock alerts, and movement history.
+  </Card>
+  <Card title="Vendor moderation" icon="users-gear">
+    Approval queue for pending products and vendor performance with commission controls.
+  </Card>
+  <Card title="Business intelligence" icon="chart-line" href="/features/analytics">
+    Regional sales heat map, inventory rotation ranking, returns analysis, and revenue projection.
+  </Card>
+  <Card title="Customer support" icon="headset">
+    Support ticket management and discount coupon creation.
+  </Card>
+</CardGroup>
+
+A fifth **Quick actions** group gives one-click access to Users, Catalog, Carousel, and Bug Reports.
+
+## All admin routes
+
+The table below lists every admin route, the page component it renders, and the role required to access it.
+
+| Route | Page | Purpose |
+|---|---|---|
+| `/admin` | `AdminOverview` | Global KPI dashboard, charts, and navigation hub |
+| `/admin/usuarios` | `UserManagement` | View, filter, edit roles, and toggle user accounts |
+| `/admin/vendedores` | `SellerMetrics` | Sales and quality metrics per seller, with expandable detail rows |
+| `/admin/clientes` | `ClientMetrics` | Client segmentation (VIP / Regular / New) and top-10 spender table |
+| `/admin/productos` | `AdminProducts` | Full product catalog with inline price/stock editing and delete |
+| `/admin/carrusel` | `ManageCarousel` | Add, edit, and remove homepage carousel slides |
+| `/admin/home` | `ManageHome` | Toggle visibility of homepage sections (Hero, Carousel, Featured, Benefits) |
+| `/admin/reportes` | `AdminBugReports` | Review, resolve, or discard platform bug and quality reports |
+| `/admin/inventario/lotes` | `BatchControl` | Manage fabric rolls (batches) with meter tracking and status filters |
+| `/admin/inventario/merma` | `WasteCalculator` | Log waste events and analyse waste by reason with Recharts bar/line charts |
+| `/admin/inventario/alertas` | `StockSettings` | Set per-fabric-type minimum stock thresholds and toggle email alerts |
+| `/admin/inventario/historial` | `MovementHistory` | Full audit trail of stock movements (sales + waste), exportable to CSV |
+| `/admin/moderacion/aprobacion` | `ApprovalQueue` | Review and approve or reject vendor-submitted products |
+| `/admin/moderacion/vendedores` | `VendorPerformance` | Adjust seller commission rates and suspend/reactivate sellers |
+| `/admin/analytics/mapa-ventas` | `SalesHeatMap` | Recharts Treemap showing sales volume by Colombian department |
+| `/admin/analytics/rotacion` | `RotationRanking` | Top-10 bestsellers and dead-stock identification by configurable day threshold |
+| `/admin/analytics/devoluciones` | `ReturnsAnalysis` | Return rate, value at risk, reports by fabric type (PieChart) and by seller |
+| `/admin/analytics/proyeccion` | `RevenueProjection` | 3/6/12-month revenue forecast in three scenarios (conservative, projected, optimistic) |
+| `/admin/soporte/tickets` | `TicketManagement` | Manage support tickets with status updates and admin assignment |
+| `/admin/soporte/cupones` | `CouponCreation` | Create and deactivate percentage or fixed-value discount coupons |
+| `/admin/configuracion` | `SystemConfig` | Site name, theme colours, tax rate, shipping costs, global banner, and dark-mode default |
+
+<Tip>
+  Use the module section cards on the overview page as your primary navigation. Each card tile navigates directly to the relevant feature without requiring you to remember the full URL path.
+</Tip>

@@ -1,0 +1,184 @@
+---
+title: Roles and permissions
+description: Role-based access control in D&D Textil — three roles, route guards, and the permission matrix.
+---
+
+D&D Textil uses three user roles. Role assignment lives in the `users.role` column of PostgreSQL, is normalized to English on login, and is stored in `localStorage` alongside the authenticated user object.
+
+## The three roles
+
+| Role (frontend) | Role (database) | Description |
+|----------------|-----------------|-------------|
+| `client` | `client` | Regular buyer. Can browse, purchase, manage orders and support tickets. |
+| `seller` | `seller` | Fabric vendor. Can manage their own products, view orders, and monitor stock. |
+| `admin` | `admin` | Platform administrator. Full access to all routes and all data. |
+
+## Role normalization
+
+When the Java backend registers a new user it assigns the role `"cliente"` (Spanish). The `AuthContext` normalizes the backend's Spanish role names to English keys used throughout the frontend:
+
+```jsx
+// src/context/AuthContext.jsx — login() function
+if (response.ok && data.success) {
+    let normalizedRole = data.user.role;
+    if (normalizedRole === 'administrador' || normalizedRole === 'admin') normalizedRole = 'admin';
+    else if (normalizedRole === 'vendedor') normalizedRole = 'seller';
+    else if (normalizedRole === 'cliente') normalizedRole = 'client';
+
+    const loggedInUser = { ...data.user, role: normalizedRole };
+    delete loggedInUser.password_hash; // never store the hash in localStorage
+    setUser(loggedInUser);
+}
+```
+
+| Backend value | Normalized frontend value |
+|--------------|---------------------------|
+| `cliente` | `client` |
+| `vendedor` | `seller` |
+| `administrador` or `admin` | `admin` |
+
+## How roles are stored
+
+The `AuthProvider` uses the `useLocalStorage` hook to persist the authenticated user:
+
+```jsx
+const [user, setUser] = useLocalStorage('authUser', null);
+```
+
+The entire user object (minus `password_hash`) is serialized to `localStorage` under the key `authUser`. On page reload, the hook reads it back synchronously so `isAuthenticated` is truthy before the first render.
+
+## The `hasRole` function
+
+`AuthContext` exposes `hasRole()` to let any component check whether the current user has a given role:
+
+```jsx
+// src/context/AuthContext.jsx lines 112-118
+const hasRole = (roles) => {
+    if (!user) return false;
+    if (Array.isArray(roles)) {
+        return roles.includes(user.role);
+    }
+    return user.role === roles;
+};
+```
+
+Pass a string to check a single role, or an array to check membership in a set:
+
+```jsx
+hasRole('admin')              // true only for admins
+hasRole(['seller', 'admin'])  // true for sellers and admins
+```
+
+## `ProtectedRoute` enforcement
+
+The `ProtectedRoute` component calls `hasRole()` to block unauthorized navigation:
+
+```jsx
+// src/components/ProtectedRoute.jsx
+function ProtectedRoute({ children, roles }) {
+    const { user, isAuthenticated, hasRole } = useAuth();
+    const location = useLocation();
+
+    if (!isAuthenticated) {
+        // Preserve the attempted URL so Login can redirect back after success
+        return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
+    if (roles && !hasRole(roles)) {
+        // Role mismatch — redirect to home
+        return <Navigate to="/" replace />;
+    }
+
+    return children;
+}
+```
+
+<Warning>
+Route protection is **client-side only**. The Java backend does not validate the user's role on API calls. A user who crafts a direct HTTP request can call any endpoint regardless of role. Add server-side authorization checks before shipping to production.
+</Warning>
+
+## Permission matrix
+
+| Feature | Client | Seller | Admin |
+|---------|--------|--------|-------|
+| Browse catalog | ✓ | ✓ | ✓ |
+| View product detail | ✓ | ✓ | ✓ |
+| Add to cart | ✓ | ✓ | ✓ |
+| Checkout & payment | ✓ | ✓ | ✓ |
+| Client dashboard (`/cliente`) | ✓ | — | — |
+| Order history & tracking | ✓ | — | — |
+| Wishlist & project calculator | ✓ | — | — |
+| Submit support ticket | ✓ | — | — |
+| View own tickets | ✓ | — | — |
+| Address book | ✓ | — | — |
+| Seller dashboard (`/vendedor`) | — | ✓ | ✓ |
+| Manage own products | — | ✓ | ✓ |
+| View seller orders | — | ✓ | ✓ |
+| Stock alerts | — | ✓ | ✓ |
+| Admin overview (`/admin`) | — | — | ✓ |
+| User management | — | — | ✓ |
+| Seller metrics | — | — | ✓ |
+| Client metrics | — | — | ✓ |
+| Product moderation (approve / reject) | — | — | ✓ |
+| Carousel & home management | — | — | ✓ |
+| Bug report management | — | — | ✓ |
+| Inventory batches & waste log | — | — | ✓ |
+| Stock thresholds | — | — | ✓ |
+| Vendor performance & approval queue | — | — | ✓ |
+| Analytics (heat map, rotation, revenue) | — | — | ✓ |
+| Ticket management | — | — | ✓ |
+| Coupon creation | — | — | ✓ |
+| System configuration | — | — | ✓ |
+
+## Role checks in route definitions
+
+<Tabs>
+  <Tab title="Client-only route">
+    ```jsx
+    <Route
+        path="/cliente"
+        element={
+            <ProtectedRoute roles="client">
+                <ClientDashboard />
+            </ProtectedRoute>
+        }
+    />
+    ```
+  </Tab>
+  <Tab title="Seller or admin route">
+    ```jsx
+    <Route
+        path="/vendedor"
+        element={
+            <ProtectedRoute roles={['seller', 'admin']}>
+                <SellerProducts />
+            </ProtectedRoute>
+        }
+    />
+    ```
+  </Tab>
+  <Tab title="Admin-only route">
+    ```jsx
+    <Route
+        path="/admin"
+        element={
+            <ProtectedRoute roles="admin">
+                <AdminOverview />
+            </ProtectedRoute>
+        }
+    />
+    ```
+  </Tab>
+  <Tab title="Auth-only (any role)">
+    ```jsx
+    <Route
+        path="/checkout"
+        element={
+            <ProtectedRoute>
+                <Checkout />
+            </ProtectedRoute>
+        }
+    />
+    ```
+  </Tab>
+</Tabs>

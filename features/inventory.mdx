@@ -1,0 +1,323 @@
+---
+title: Inventory management
+description: How to manage fabric rolls, log waste, configure stock alerts, audit movement history, manage the product catalog, handle support tickets, create coupons, and control homepage content.
+---
+
+Inventory management in D&D Textil covers the full lifecycle of fabric stock — from receiving rolls to tracking waste — and extends to the product catalog, customer support tools, and homepage content controls. All routes require the **admin** role.
+
+## Batch (roll) control (`/admin/inventario/lotes`)
+
+The batch control page tracks every fabric roll (rollo/lote) in the warehouse. Each batch record contains: roll ID, fabric type, supplier, initial metres, current metres, waste percentage, status, and last-updated date.
+
+### Status filters
+
+Four filter buttons narrow the table:
+
+| Filter | Meaning |
+|---|---|
+| **Todos** | All batches (shows total count) |
+| **Activos** | Rolls with normal stock levels |
+| **Stock Bajo** | Rolls approaching the minimum threshold |
+| **Crítico** | Rolls at or below critical levels |
+
+### Batch table columns
+
+| Column | Details |
+|---|---|
+| **ID Rollo** | Unique roll identifier (monospace) |
+| **Tipo de Tela** | Fabric type name |
+| **Proveedor** | Supplier name |
+| **Metros Iniciales** | Original roll length on receipt |
+| **Metros Actuales** | Current remaining length — click the edit icon to update inline |
+| **Merma %** | Waste percentage derived from logged waste events; highlighted red when > 10% |
+| **Estado** | Activo / Bajo / Crítico badge |
+| **Última Actualización** | Date of last meter update |
+| *(progress bar)* | Visual fill showing remaining stock as a percentage of initial metres |
+
+### Updating current metres
+
+<Steps>
+  <Step title="Click the edit icon">
+    In the **Metros Actuales** column, click the pencil icon next to the current value.
+  </Step>
+  <Step title="Enter the new value">
+    Type the updated metre count into the inline input field.
+  </Step>
+  <Step title="Confirm">
+    Press **Enter** or click away from the field to save. The progress bar and waste percentage recalculate immediately.
+  </Step>
+</Steps>
+
+### Adding a new batch
+
+Click **Agregar Lote** in the top-right corner to open the add-batch modal and fill in the roll details.
+
+### Summary cards
+
+Four cards below the table show total batches, active batches, low-stock batches, and critical batches.
+
+## Waste calculator (`/admin/inventario/merma`)
+
+This page records fabric waste events and visualises trends to help you identify the leading causes of material loss.
+
+### Summary cards
+
+| Card | Metric |
+|---|---|
+| **Total Merma** | Cumulative wasted metres across all events |
+| **Eventos Registrados** | Number of waste events logged |
+| **Promedio por Evento** | Average metres lost per event |
+| **Principal Causa** | Waste reason category with the highest total metres |
+
+### Charts
+
+Two `recharts` charts sit side by side:
+
+- **Merma por Razón** — a `BarChart` comparing total wasted metres across four reason categories.
+- **Tendencia de Merma** — a `LineChart` showing the last 10 waste events over time (amber line).
+
+### Waste reason categories
+
+| Code | Label |
+|---|---|
+| `factory_defect` | Defecto de Fábrica |
+| `cutting_error` | Error de Corte |
+| `damaged` | Dañado en Transporte |
+| `quality_control` | Control de Calidad |
+
+### Recent events table
+
+The table lists all waste events in reverse chronological order with columns for: Date, Roll ID, Metres (red), Reason badge, Description, and Responsible person.
+
+### Logging a waste event
+
+<Steps>
+  <Step title="Open the form">
+    Click **Registrar Merma** at the top right.
+  </Step>
+  <Step title="Select the roll">
+    Choose the affected roll from the **ID Rollo** dropdown. The list is populated from active inventory batches.
+  </Step>
+  <Step title="Enter the metres and reason">
+    Type the number of metres wasted (decimals supported), select the reason category, and write a description.
+  </Step>
+  <Step title="Add the responsible person">
+    Enter the name of the person responsible for the event, or type `N/A`.
+  </Step>
+  <Step title="Submit">
+    Click **Registrar**. The event appears in the table and the charts update.
+  </Step>
+</Steps>
+
+## Stock settings and alerts (`/admin/inventario/alertas`)
+
+This page lets you define per-fabric-type minimum stock thresholds and see which rolls are currently below their limit.
+
+### Header cards
+
+| Card | Metric |
+|---|---|
+| **Alertas Activas** | Number of rolls currently below their configured threshold |
+| **Notificaciones Email** | Toggle to enable or disable email alerts (on by default) |
+| **Umbrales Configurados** | Total number of fabric-type threshold rules |
+
+### Threshold configuration table
+
+Each row represents one fabric type.
+
+| Column | Details |
+|---|---|
+| **Tipo de Tela** | Fabric type name |
+| **Stock Actual** | Total current metres across all rolls of this type; red when below threshold |
+| **Umbral Mínimo (m)** | Click the value to edit it inline (Enter or blur to save) |
+| **Estado** | Green **✓ Normal** or red **⚠️ Stock Bajo** |
+| **Alerta** | Per-type toggle switch to enable or disable alerting for this fabric |
+
+Rows with stock below the minimum threshold are highlighted with a red background.
+
+### Active alerts panel
+
+When one or more rolls are below their threshold, a red panel appears below the table listing each alert with the fabric type, roll ID, current metres, and the configured minimum.
+
+<Warning>
+  Active alerts are not automatically resolved. You need to restock the roll and update the current metres in Batch Control to clear an alert.
+</Warning>
+
+## Movement history (`/admin/inventario/historial`)
+
+The movement history page provides a full, filterable audit trail of every inventory change — both sales-driven reductions and waste events.
+
+### Filters and search
+
+- **Text search** — filters by roll ID, user name, or fabric type.
+- **Type filter** — Todos (all), Merma (waste events), or Ventas (sale-driven movements).
+
+### Summary cards
+
+Three cards show: total movements, waste events, and movements from sales.
+
+### Movement table columns
+
+| Column | Details |
+|---|---|
+| **Fecha** | Movement date |
+| **Tipo** | Red **Merma** or green **Venta** badge |
+| **Usuario** | User who triggered the movement |
+| **Rollo** | Roll ID (monospace) |
+| **Tipo de Tela** | Fabric type |
+| **Metros** | Signed metre change — red for negative (waste/sale), green for positive |
+| **Razón** | Reason description |
+| **Estado** | Completion status |
+
+The table shows the most recent 50 matching movements.
+
+### Exporting to CSV
+
+Click **Exportar CSV** to download all currently-filtered movements as a CSV file. The filename includes the current date (`historial_inventario_YYYY-MM-DD.csv`). The export contains: Date, Type, User, Roll, Fabric, Metres, Reason, and Status columns.
+
+## Product management (`/admin/productos`)
+
+The product catalog page gives you a bird's-eye view of all listed products with inline editing for price and stock.
+
+### Stock metric cards
+
+| Card | Meaning |
+|---|---|
+| **Total Productos** | All products in the catalog |
+| **En Stock** | Products with stock > 0 |
+| **Stock Bajo** | Products with stock below the low-stock threshold (< 20 units) |
+| **Agotados** | Products with zero stock |
+
+### Filtering the catalog
+
+- **Search** — matches product name or category.
+- **Category filter** — dropdown populated with all unique categories in the catalog.
+
+### Product table columns
+
+| Column | Details |
+|---|---|
+| **Producto** | Thumbnail image (or placeholder icon) + product name |
+| **Categoría** | Product category (hidden on small screens) |
+| **Precio** | Formatted currency — click edit to change inline |
+| **Stock** | Unit count — red when < 20, green otherwise; click edit to change inline |
+| **Acciones** | Edit and Delete buttons |
+
+### Editing a product
+
+Click the **Edit** icon to enter edit mode for that row. The Price and Stock cells become number inputs. Click the save icon (checkmark/dollar) to commit, or the cancel (✕) button to discard.
+
+<Warning>
+  Deleting a product is irreversible. A browser confirmation dialog appears before the deletion is processed.
+</Warning>
+
+## Support tickets (`/admin/soporte/tickets`)
+
+The ticket management page centralises all customer support requests.
+
+### Summary cards
+
+| Card | Metric |
+|---|---|
+| **Total Tickets** | All tickets ever created |
+| **Pendientes** | Open + in-progress tickets |
+| **Resueltos Hoy** | Tickets resolved on the current calendar day |
+| **Prioridad Alta** | Unresolved high-priority tickets |
+
+### Ticket statuses
+
+| Status | Badge colour |
+|---|---|
+| **Abierto** | Yellow |
+| **En Progreso** | Blue |
+| **Resuelto** | Green |
+| **Cerrado** | Grey |
+
+### Ticket card fields
+
+Each ticket card shows: ticket number (zero-padded), status badge, priority indicator (🔴 Alta / 🟡 Media / 🟢 Baja), subject, description, customer name, email, related order number (if any), and creation date.
+
+### Managing a ticket
+
+- **Status dropdown** — change the ticket status directly on the card without opening a modal.
+- **Assign to** — select an admin user from the dropdown to assign the ticket; assignment saves immediately.
+- **Ver Detalles** — opens a modal with the full ticket description and customer info, plus **Marcar en Progreso** and **Marcar como Resuelto** buttons.
+
+## Coupon creation (`/admin/soporte/cupones`)
+
+Create discount coupons for customers and manage active codes from one page.
+
+### Summary cards
+
+| Card | Metric |
+|---|---|
+| **Total Cupones** | All coupons ever created |
+| **Activos** | Currently active coupons |
+| **Usados Hoy** | Cumulative usage count across all coupons |
+| **Expiran Pronto** | Active coupons expiring within the next 7 days |
+
+### Coupon table columns
+
+| Column | Details |
+|---|---|
+| **Código** | Uppercase alphanumeric code |
+| **Descuento** | Purple badge showing `N% OFF` or `-$N` |
+| **Usos** | Current usage count / max uses (if set) |
+| **Reglas** | Minimum purchase and/or first-time-only restriction |
+| **Expira** | Expiry date; orange warning when ≤ 7 days remaining, red when expired |
+| **Estado** | Activo / Inactivo / Expirado badge |
+| **Acción** | **Desactivar** button for active non-expired coupons |
+
+### Creating a coupon
+
+<Steps>
+  <Step title="Open the creation form">
+    Click **Crear Cupón** at the top right.
+  </Step>
+  <Step title="Set the coupon code">
+    Enter an alphanumeric code (e.g., `VERANO2024`). The field auto-converts to uppercase.
+  </Step>
+  <Step title="Choose the discount type and value">
+    Select **Porcentaje (%)** for a percentage discount or **Valor Fijo ($)** for a fixed COP amount, then enter the value.
+  </Step>
+  <Step title="Set the expiry date">
+    Pick a date from the date picker. This field is required.
+  </Step>
+  <Step title="Configure optional rules">
+    Optionally enter a minimum purchase amount, a maximum number of uses, and/or check **Solo para nuevos clientes** to restrict the coupon to first-time buyers.
+  </Step>
+  <Step title="Save">
+    Click **Crear Cupón**. The new coupon appears in the table immediately with an Activo status.
+  </Step>
+</Steps>
+
+## Homepage management
+
+### Carousel management (`/admin/carrusel`)
+
+The carousel page manages the promotional slides displayed on the homepage hero section.
+
+Each slide card shows a thumbnail, title, and subtitle. The available actions are:
+
+- **Edit** — modifies the title, subtitle, and image of an existing slide inline.
+- **Delete** — removes the slide after a browser confirmation.
+- **Add Slide** — clicking **Agregar Slide** expands a form for a new title, subtitle, and image upload.
+
+Images are uploaded as file uploads and stored as base64 data URLs. Title and image are required fields; subtitle is optional.
+
+### Home section visibility (`/admin/home`)
+
+The home management page controls which sections of the public homepage are visible. The four toggleable sections are:
+
+| Section ID | Name | Description |
+|---|---|---|
+| `hero` | Hero Section | Main banner and CTA |
+| `carousel` | Carrusel de Promociones | Promotional slides |
+| `featured` | Productos Destacados | Featured product grid |
+| `benefits` | Sección de Beneficios | Trust/benefit icons |
+
+Each row has a toggle button that switches between green **Visible** and grey **Oculto**. Changes are persisted to the backend API (`/api/config`) immediately on toggle.
+
+<Tip>
+  Hide sections during a promotional transition (for example, hiding **Productos Destacados** while you update the featured selection) without needing to redeploy the application.
+</Tip>

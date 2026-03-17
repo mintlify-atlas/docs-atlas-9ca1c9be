@@ -1,0 +1,113 @@
+---
+title: "Product catalog"
+description: "Browse, filter, and sort D&D Textil's full range of premium fabrics at /catalogo."
+keywords: ["catalog", "browse", "filter", "sort", "products", "fabrics"]
+---
+
+## Overview
+
+The catalog page (`/catalogo`) is the main product-browsing experience. It loads every fabric in the store and renders them in a responsive grid. All filtering, sorting, and price-range controls live on this single page — no full-page reloads required.
+
+Products are fetched through `ProductContext` and passed directly into the `ProductGrid` component, which owns all client-side filter state.
+
+## Browsing the grid
+
+The `ProductGrid` component renders products in a responsive CSS grid:
+
+| Breakpoint | Columns |
+|---|---|
+| Mobile (`< sm`) | 1 |
+| Tablet (`sm`) | 2 |
+| Desktop (`lg`) | 3 |
+| Wide (`xl`) | 4 |
+
+While products are loading, a full-page `TruckLoader` animation replaces the grid. Once the data resolves, products animate in staggered — each card delayed by `index × 50 ms`.
+
+A result count line above the grid tells you how many products match the current filters:
+
+```
+Mostrando 12 productos
+```
+
+If no products match the active filters, the grid is replaced with an empty-state message.
+
+## Filtering by category
+
+Category buttons appear above the grid. The available categories are derived dynamically from the product data, so the list always reflects what is in the catalog. Current categories include:
+
+| Category | Example product |
+|---|---|
+| **Todos** | _(shows all products)_ |
+| Algodón | Tela de Algodón Premium |
+| Seda | Seda Italiana Luxury |
+| Lino | Lino Natural Beige |
+| Terciopelo | Terciopelo Azul Real |
+| Denim | Denim Stretch Negro |
+| Gasa | Gasa Floral Primavera |
+| Satén | Satén Champagne |
+| Tweed | Tweed Multicolor |
+| Jersey | Jersey Punto Gris |
+| Organza | Organza Blanca |
+| Pana | Pana Camel |
+| Encaje | Encaje Francés Marfil |
+
+Click any category button to filter the grid instantly. The active category is highlighted with a filled primary-color background. Click **Todos** to clear the category filter.
+
+## Sorting products
+
+The **Ordenar por** dropdown lets you control the order of the grid. The four available options are:
+
+| Option (display) | Sort key | Behaviour |
+|---|---|---|
+| Destacados | `featured` | Products with `featured: true` appear first |
+| Precio: Menor a Mayor | `price-asc` | Ascending by `price` |
+| Precio: Mayor a Menor | `price-desc` | Descending by `price` |
+| Nombre A-Z | `name` | Alphabetical by `name` using locale-aware comparison |
+
+The default sort is **Destacados**. Sorting is applied after category and price-range filters.
+
+## Price range filter
+
+A range slider below the sort dropdown lets you set a maximum price. The slider runs from **$0** to **$100,000** in steps of **$5,000**. The current range is shown in the label above the slider:
+
+```
+Rango de precio: $0 - $45,000
+```
+
+Filtering is live — the grid updates as you drag the slider. The lower bound is always $0; only the upper bound is adjustable.
+
+<Tip>
+  To quickly find premium options, drag the slider to the right. To narrow results to budget fabrics, drag it toward the lower end.
+</Tip>
+
+## What product cards show
+
+Each `ProductCard` in the grid displays:
+
+- **Product image** — first image from the `images` array, with a scale animation on hover. Falls back to `/placeholder.png` on error.
+- **Category badge** — top-left overlay on the image.
+- **Low-stock badge** — top-right overlay reading *¡Últimas unidades!* when `stock < 10`.
+- **Product name** — truncated to one line; turns primary-color on hover.
+- **Short description** — up to two lines of text.
+- **Width** — `product.width` (e.g., `150 cm`).
+- **Stock** — available metres.
+- **Price** — formatted in COP with `por metro` label below.
+- **Add to cart button** — turns green when the product is already in the cart.
+
+Hovering a card reveals two icon buttons overlaid on the image: **View details** and **Add to favorites**.
+
+## Navigating to product detail
+
+Click anywhere on a card (image, name, or description area) to open the product detail page at `/producto/:id`. Clicking the cart icon adds 1 metre directly to the cart without navigating away.
+
+<Steps>
+  <Step title="Open the catalog">
+    Navigate to `/catalogo`. All products load into the grid.
+  </Step>
+  <Step title="Apply filters (optional)">
+    Select a category, adjust the price slider, or change the sort order to narrow results.
+  </Step>
+  <Step title="Open a product">
+    Click a card to go to `/producto/:id` for full details, the image gallery, and the quantity selector.
+  </Step>
+</Steps>

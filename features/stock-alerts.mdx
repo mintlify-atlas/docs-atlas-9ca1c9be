@@ -1,0 +1,84 @@
+---
+title: Stock alerts
+description: How sellers monitor low-stock and out-of-stock products in D&D Textil.
+---
+
+The stock alerts page is available to sellers at `/vendedor/stock`. It surfaces inventory problems across three severity levels and also aggregates open quality reports that require the seller's attention.
+
+## Alert thresholds
+
+Stock levels are evaluated against two thresholds:
+
+| Level | Condition | Label |
+|---|---|---|
+| **Critical** | `stock < 10 m` | Stock Crítico |
+| **Low** | `10 m ≤ stock < lowStockThreshold` | Stock Bajo |
+| **Out of stock** | `stock === 0 m` | Agotados |
+
+The `lowStockThreshold` value defaults to **20 meters** and is read from `systemConfig` in `MetricsContext`. An administrator can adjust this system-wide setting.
+
+<Note>
+  A product with `stock = 0` counts in **both** the critical and out-of-stock buckets in the summary cards, but it is only listed once — under the Agotados section.
+</Note>
+
+## Summary cards
+
+Four cards at the top of the page give counts for the current seller's products:
+
+<CardGroup cols={2}>
+  <Card title="Stock Crítico" icon="trending-down">
+    Products with fewer than 10 meters remaining. Red left border. Requires urgent action.
+  </Card>
+  <Card title="Stock Bajo" icon="archive">
+    Products between 10 m and the `lowStockThreshold`. Orange left border. Plan for restocking.
+  </Card>
+  <Card title="Agotados" icon="package">
+    Products with zero meters available. Grey left border.
+  </Card>
+  <Card title="Reportes Abiertos" icon="alert-circle">
+    Open quality or support reports filed by clients against this seller's products. Yellow left border.
+  </Card>
+</CardGroup>
+
+## Critical stock section
+
+When any products have fewer than 10 meters, a red-highlighted section appears with the heading **Stock Crítico - Acción Urgente**.
+
+Each item shows:
+- Product thumbnail
+- Product name
+- Internal reference ID
+- Price per meter
+- Current stock in meters (displayed in red)
+- **Reponer Urgente** action button
+
+## Low stock section
+
+When any products are between 10 m and the threshold, the **Stock Bajo - Planificar Reposición** section lists them in the same format, with the stock count displayed in orange and a **Reponer Stock** action button.
+
+## Out-of-stock section
+
+Products with `stock = 0` appear in the **Productos Agotados** section. Items are rendered at reduced opacity with a greyscale product image to indicate they are unavailable. The stock display reads **AGOTADO** in grey and a **Reponer** button is shown.
+
+## Open quality reports
+
+Below the inventory sections, the page lists any quality or support reports (bug reports) filed against this seller's products that are still in `open` status.
+
+Each report card shows:
+
+| Field | Description |
+|---|---|
+| Title | Short description of the issue |
+| Description | Full client-reported problem text |
+| Priority badge | **Alta** (red), **Media** (yellow), or **Baja** (blue) |
+| Product | Name of the affected product |
+| Client | Name of the client who filed the report |
+| Date | Date the report was submitted |
+
+<Warning>
+  High-priority reports (tagged **Alta**) indicate issues like wrong fabric, staining, or incorrect meters. Respond to these first to avoid escalation.
+</Warning>
+
+## All clear state
+
+If no critical, low, or out-of-stock items exist and there are no open reports, the page displays a green confirmation panel: **¡Todo en Orden!** — indicating no alerts require attention at this time.

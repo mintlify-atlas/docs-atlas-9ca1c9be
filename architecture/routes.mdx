@@ -1,0 +1,150 @@
+---
+title: Route reference
+description: Complete route map for D&D Textil — all paths, components, and access levels.
+---
+
+All routes are defined in `src/App.jsx`. The `ProtectedRoute` component guards every route that requires authentication or a specific role.
+
+## `ProtectedRoute` usage pattern
+
+```jsx
+// src/components/ProtectedRoute.jsx
+function ProtectedRoute({ children, roles }) {
+    const { isAuthenticated, hasRole } = useAuth();
+    const location = useLocation();
+
+    if (!isAuthenticated) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
+    if (roles && !hasRole(roles)) {
+        return <Navigate to="/" replace />;
+    }
+
+    return children;
+}
+```
+
+- **No `roles` prop** — any authenticated user can access the route.
+- **String `roles` prop** — user's role must match exactly (e.g. `roles="admin"`).
+- **Array `roles` prop** — user's role must be in the array (e.g. `roles={['seller', 'admin']}`).
+- Unauthenticated users are redirected to `/login` with the attempted path saved in `location.state.from`.
+- Authenticated users without the required role are redirected to `/`.
+
+## Public routes
+
+No authentication required. Accessible by all visitors.
+
+| Path | Component | Notes |
+|------|-----------|-------|
+| `/` | `Home` | Landing page |
+| `/catalogo` | `Catalog` | Product listing |
+| `/producto/:id` | `ProductDetail` | Individual product page |
+| `/carrito` | `Cart` | Shopping cart (client-side only) |
+| `/nosotros` | `About` | About page |
+| `/contacto` | `Contact` | Contact page |
+| `/login` | `Login` | Login form |
+| `/registro` | `Register` | Registration form |
+| `/reportar-fallo` | `BugReport` | Public bug report form |
+| `/loader-demo` | `LoaderDemo` | UI component demo |
+
+## Protected routes (any authenticated user)
+
+Requires login; no specific role check.
+
+| Path | Component | Notes |
+|------|-----------|-------|
+| `/pago` | `Payment` | Payment page |
+| `/checkout` | `Checkout` | Checkout flow |
+| `/confirmacion` | `OrderConfirmation` | Post-purchase confirmation |
+
+## Client routes
+
+Requires `roles="client"`.
+
+| Path | Component |
+|------|----------|
+| `/cliente` | `ClientDashboard` |
+| `/perfil` | `ClientProfile` |
+| `/mis-pedidos` | `ClientOrderHistory` |
+| `/cliente/pedidos` | `OrderHistoryNew` |
+| `/cliente/pedidos/rastreo` | `OrderTracking` |
+| `/cliente/coleccion` | `Wishlist` |
+| `/cliente/coleccion/calculadora` | `ProjectCalculator` |
+| `/cliente/soporte/nuevo` | `NewReport` |
+| `/cliente/soporte/tickets` | `MyTickets` |
+| `/cliente/configuracion` | `Profile` (Settings) |
+| `/cliente/configuracion/direcciones` | `AddressBook` |
+
+## Seller routes
+
+Requires `roles={['seller', 'admin']}`. Admins can access all seller views.
+
+| Path | Component |
+|------|----------|
+| `/vendedor` | `SellerProducts` (SellerDashboard) |
+| `/vendedor/productos` | `SellerProducts` |
+| `/vendedor/pedidos` | `SellerOrders` |
+| `/vendedor/stock` | `StockAlerts` |
+| `/vendedor/configuracion` | `Profile` (Settings) |
+
+## Admin routes
+
+Requires `roles="admin"`.
+
+### Main admin
+
+| Path | Component |
+|------|----------|
+| `/admin` | `AdminOverview` |
+| `/admin/usuarios` | `UserManagement` |
+| `/admin/vendedores` | `SellerMetrics` |
+| `/admin/clientes` | `ClientMetrics` |
+| `/admin/productos` | `AdminProducts` |
+| `/admin/carrusel` | `ManageCarousel` |
+| `/admin/home` | `ManageHome` |
+| `/admin/reportes` | `AdminBugReports` |
+| `/admin/configuracion` | `SystemConfig` |
+
+### Inventory management
+
+| Path | Component |
+|------|----------|
+| `/admin/inventario/lotes` | `BatchControl` |
+| `/admin/inventario/merma` | `WasteCalculator` |
+| `/admin/inventario/alertas` | `StockSettings` |
+| `/admin/inventario/historial` | `MovementHistory` |
+
+### Vendor moderation
+
+| Path | Component |
+|------|----------|
+| `/admin/moderacion/aprobacion` | `ApprovalQueue` |
+| `/admin/moderacion/vendedores` | `VendorPerformance` |
+
+### Analytics
+
+| Path | Component |
+|------|----------|
+| `/admin/analytics/mapa-ventas` | `SalesHeatMap` |
+| `/admin/analytics/rotacion` | `RotationRanking` |
+| `/admin/analytics/devoluciones` | `ReturnsAnalysis` |
+| `/admin/analytics/proyeccion` | `RevenueProjection` |
+
+### Support (admin)
+
+| Path | Component |
+|------|----------|
+| `/admin/soporte/tickets` | `TicketManagement` |
+| `/admin/soporte/cupones` | `CouponCreation` |
+
+## Route counts
+
+| Category | Count |
+|---------|------|
+| Public | 10 |
+| Any authenticated | 3 |
+| Client only | 11 |
+| Seller / Admin | 5 |
+| Admin only | 18 |
+| **Total** | **47** |

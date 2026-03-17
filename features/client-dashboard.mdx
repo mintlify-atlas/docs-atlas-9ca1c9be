@@ -1,0 +1,269 @@
+---
+title: Client dashboard
+description: Everything a client can do after logging in to D&D Textil.
+---
+
+After a successful login, clients are redirected to `/cliente` — their personal dashboard. The dashboard aggregates order metrics, quick-access cards, and account management in a single view.
+
+## Dashboard overview (`/cliente`)
+
+The dashboard header greets the client by name and shows four live metric cards:
+
+| Metric | Description |
+|---|---|
+| **Total Pedidos** | Total number of orders placed by this client |
+| **En Camino** | Orders with status `paid`, `cutting`, `packed`, or `shipped` |
+| **Lista de Deseos** | Number of fabrics saved to the wishlist |
+| **Total Comprado** | Sum of all order totals formatted as COP currency |
+
+Below the metrics, four quick-action cards link directly to orders, wishlist, project calculator, and support.
+
+The **Pedidos Recientes** panel lists the 3 most recent orders with order number, date, total, and status badge. Each row links to `/cliente/pedidos/rastreo?id={orderId}` for tracking details.
+
+The **Mi Cuenta** sidebar shows the user's avatar initial, name, and email, along with shortcut links to Edit Profile, Shipping Addresses, and Report a Problem.
+
+---
+
+## Profile management
+
+### Profile settings (`/cliente/configuracion`)
+
+Clients can update their personal information and security settings.
+
+**Personal information fields:**
+- Full name
+- Email address
+- Phone number
+
+**Security — changing password:**
+
+Click **Cambiar contraseña** to reveal the password change form. The new password must be at least 8 characters. Both the new password and confirmation must match before the form submits.
+
+**Notification preferences:**
+
+| Toggle | What it controls |
+|---|---|
+| Nuevas colecciones | Alerts when new fabrics arrive |
+| Ofertas y descuentos | Promotional offers and coupons |
+| Actualizaciones de pedidos | Shipping and delivery status updates |
+| Newsletter | Sewing tips and trend content |
+
+All changes are saved with a single **Guardar Cambios** button at the bottom of the page.
+
+---
+
+## Address book (`/cliente/configuracion/direcciones`)
+
+Clients can store multiple shipping addresses for orders. Addresses are scoped to Colombia and include a department selector with all 33 departments.
+
+**Address fields:**
+
+| Field | Required |
+|---|---|
+| Address type (Casa, Taller, Oficina, Otro) | Yes |
+| Recipient full name | Yes |
+| Phone number | Yes |
+| Department | Yes |
+| City | Yes |
+| Neighborhood | No |
+| Street address | Yes |
+| Additional info (apartment, floor, etc.) | No |
+| Set as default | No |
+
+Only one address can be marked as the default. When you set a new default, the previous default is automatically cleared. Non-default addresses can be edited, set as default, or deleted. The default address cannot be deleted.
+
+---
+
+## Order history (`/cliente/pedidos`)
+
+The order history page lists all orders placed by the client, sorted by date descending.
+
+**Summary cards at the top:**
+- Total orders
+- Orders in process (status: `paid`, `cutting`, `packed`)
+- Orders shipped
+- Orders delivered
+
+**Filtering and search:**
+
+You can filter by status using the dropdown and search by order number or tracking guide number using the text field. Both filters apply simultaneously.
+
+**Order statuses:**
+
+| Status | Label | Color |
+|---|---|---|
+| `pending` | Pendiente | Yellow |
+| `paid` | Pagado | Blue |
+| `cutting` | En Corte | Purple |
+| `packed` | Empacado | Indigo |
+| `shipped` | Enviado | Cyan |
+| `delivered` | Entregado | Green |
+| `cancelled` | Cancelado | Red |
+
+**Per-order actions:**
+- **Ver Detalles** — opens the order tracking page for that order
+- **Factura** — downloads the order invoice
+- **Reportar Problema** — only shown for delivered orders; links to `/cliente/soporte/nuevo?orderId={id}`
+
+---
+
+## Order tracking (`/cliente/pedidos/rastreo`)
+
+Access this page directly with a query parameter: `/cliente/pedidos/rastreo?id={orderId}`
+
+You can also search manually by typing an order number or shipping guide number in the search box.
+
+**Tracking timeline:**
+
+The page displays a 5-step progress bar:
+
+<Steps>
+  <Step title="Pago Recibido">
+    Payment has been confirmed.
+  </Step>
+  <Step title="En Corte">
+    The fabric is being cut to your specifications.
+  </Step>
+  <Step title="Empacado">
+    Your order is packaged and ready to hand off to the courier.
+  </Step>
+  <Step title="Enviado">
+    The package is on its way. If a tracking guide is available, the courier name (e.g. Servientrega) and guide number are shown.
+  </Step>
+  <Step title="Entregado">
+    The package has been delivered.
+  </Step>
+</Steps>
+
+Completed steps show a green checkmark. The current step is highlighted with a primary-color ring. Future steps are grey.
+
+**Order summary sidebar** shows:
+- Subtotal (pre-tax)
+- IVA at 19%
+- Shipping (free)
+- Order total
+- Shipping address
+- Contact phone
+
+Once an order is delivered, a **Reportar Problema** link appears to open a support ticket.
+
+---
+
+## Wishlist / collection (`/cliente/coleccion`)
+
+The wishlist, called **Muestrario Virtual**, lets clients save fabrics and organize them by project category (e.g. Cortinas, Vestidos, Muebles).
+
+**Category management:**
+- All saved fabrics appear under **Todas**
+- Click **Nueva Categoría** to create a custom project category
+- Tab between categories to filter the displayed fabrics
+
+**Per-item actions:**
+- **Agregar al Carrito** — adds in-stock items to the shopping cart
+- **Avisar disponibilidad** — subscribes to a back-in-stock notification for out-of-stock items (shown as **Te avisaremos** when subscribed)
+- **Añadir nota** / edit existing note — attach a free-text note to each saved fabric (e.g. "Para el proyecto del living")
+- Delete button (appears on hover) — removes the fabric from the wishlist
+
+Out-of-stock items show an **Agotado** overlay on their image.
+
+---
+
+## Project calculator (`/cliente/coleccion/calculadora`)
+
+The project calculator helps clients determine how many meters of fabric to buy for a sewing or decorating project.
+
+**Supported project types:**
+
+| Project | Required measurements |
+|---|---|
+| Falda Circular | Waist circumference, desired length |
+| Falda Recta | Waist circumference, hip circumference, desired length |
+| Cortinas | Window width, window height, fullness type (1.5×, 2×, 3×) |
+| Mantel | Table length, table width, desired overhang |
+| Cojines | Cushion size, number of cushions |
+| Vestido Sencillo | Bust circumference, dress length |
+
+**Fabric width options:**
+
+| Width | Typical use |
+|---|---|
+| 1.10 m | Common cotton |
+| 1.40 m | Decorative fabrics |
+| 1.50 m | Standard |
+| 2.80 m | Curtains / sheets |
+| 3.00 m | Extra wide |
+
+**How the result is calculated:**
+
+Each project type applies its own formula (e.g. for curtains: window width × fullness multiplier ÷ fabric width, plus a 30 cm hem allowance). The raw result is rounded up to the nearest 0.1 m and an additional **10% safety margin** is added to the recommended quantity.
+
+**Result display:**
+
+| Output | Description |
+|---|---|
+| Cálculo exacto | Raw calculated meters |
+| **Recomendado** | Rounded up + 10% margin |
+| Costo estimado | Recommended meters × price per meter |
+
+After calculating, you can click **Agregar al Carrito** to add the recommended quantity directly.
+
+<Tip>
+  Set the **Precio por metro** field to the actual price of the fabric you have in mind to get an accurate cost estimate.
+</Tip>
+
+---
+
+## Support tickets
+
+### Create a new report (`/cliente/soporte/nuevo`)
+
+Clients can only report problems for **delivered** orders. Opening this page with `?orderId={id}` pre-selects the order.
+
+**Report form fields:**
+
+| Field | Required |
+|---|---|
+| Order selection | Yes |
+| Issue type | Yes |
+| Description (up to 500 characters) | Yes |
+| Photos (up to 5 images) | No |
+
+**Issue types and their default priority:**
+
+| Issue | Priority |
+|---|---|
+| Manchas en la tela | High |
+| Color incorrecto | High |
+| Metraje incorrecto | High |
+| Tela dañada en transporte | High |
+| Tela equivocada | High |
+| Hilos sueltos | Medium |
+| Calidad diferente a la esperada | Medium |
+| Otro problema | Low |
+
+High-priority issues display a warning banner indicating the team will respond within hours.
+
+After submitting, the client is redirected to `/cliente/soporte/tickets`.
+
+### View my tickets (`/cliente/soporte/tickets`)
+
+This page lists all support tickets created by the client.
+
+**Ticket statuses:**
+
+| Status | Meaning |
+|---|---|
+| `open` | Report received, awaiting review |
+| `in_progress` | Seller or admin is reviewing the case |
+| `resolved` | Issue has been resolved |
+| `closed` | Case closed |
+
+Filter tickets by status using the tab buttons at the top. Click any ticket to expand it and view:
+- The original description and any attached photos
+- The conversation thread (messages from the client, seller, and support team)
+- The resolution details (for resolved tickets)
+- A reply input box (for open or in-progress tickets)
+
+<Info>
+  Seller responses appear on the left; admin responses are tagged **Soporte** in purple. Your own messages appear indented on the right.
+</Info>

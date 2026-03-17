@@ -1,0 +1,226 @@
+---
+title: Backend architecture
+description: Java HTTP server backend for D&D Textil — structure, endpoints, and database connection.
+---
+
+The backend is a pure Java HTTP server built on `com.sun.net.httpserver.HttpServer` — no Spring, no Jakarta EE. It exposes a JSON REST API on port `8081` and connects to PostgreSQL via JDBC.
+
+## Running the server
+
+<Steps>
+  <Step title="Compile the source">
+    From `backend-java/conexionPostgres/`:
+    ```bash
+    javac -cp "lib/gson-2.10.1.jar;lib/postgresql-42.7.3.jar" \
+          -d bin \
+          src/**/*.java
+    ```
+  </Step>
+  <Step title="Start the server">
+    ```bash
+    java -cp "bin;lib/gson-2.10.1.jar;lib/postgresql-42.7.3.jar" App
+    ```
+    On startup the server tests the database connection first. If the connection fails, the HTTP server does not start.
+  </Step>
+</Steps>
+
+## Dependencies
+
+| JAR | Version | Purpose |
+|-----|---------|--------|
+| `gson-2.10.1.jar` | 2.10.1 | JSON serialization / deserialization |
+| `postgresql-42.7.3.jar` | 42.7.3 | JDBC driver for PostgreSQL |
+
+## Project structure
+
+```
+backend-java/conexionPostgres/
+├── src/
+│   ├── App.java                 # Entry point — connects DB, starts server
+│   ├── api/
+│   │   ├── ApiServer.java       # Registers all HTTP contexts
+│   │   ├── AuthHandler.java     # POST /api/login, POST /api/register
+│   │   ├── ProductsHandler      # (inner class in ApiServer.java)
+│   │   ├── UsersHandler.java    # GET /api/users
+│   │   ├── OrdersHandler.java   # GET /api/orders, PUT /api/orders/{id}/status
+│   │   ├── CouponsHandler.java  # GET/POST /api/coupons, PUT /api/coupons/{id}/deactivate
+│   │   ├── ConfigHandler.java   # GET/POST /api/config
+│   │   └── SupportHandler.java  # GET/POST/PUT /api/support/tickets|bugs
+│   ├── conexion/
+│   │   └── Conexion.java        # JDBC singleton connection
+│   ├── dao/
+│   │   ├── AuthDAO.java
+│   │   ├── ProductDAO.java
+│   │   ├── UserDAO.java
+│   │   ├── OrderDAO.java
+│   │   ├── CouponDAO.java
+│   │   ├── ConfigDAO.java
+│   │   └── SupportDAO.java
+│   └── models/                  # Plain Java model classes
+├── lib/
+│   ├── gson-2.10.1.jar
+│   └── postgresql-42.7.3.jar
+└── bin/                         # Compiled .class files
+```
+
+## Entry point
+
+```java
+// src/App.java
+public class App {
+    public static void main(String[] args) throws Exception {
+        Connection conn = Conexion.getConnection();
+        if (conn != null) {
+            System.out.println("Connected to " + conn.getCatalog());
+            ApiServer.startServer(8081);
+        } else {
+            System.err.println("Could not connect to database. Server will not start.");
+        }
+    }
+}
+```
+
+## API endpoints
+
+### Authentication
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/login` | Authenticate user — returns user object on success |
+| `POST` | `/api/register` | Register new user with role `cliente` |
+
+### Products
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/products` | List all active products |
+| `GET` | `/api/products/pending` | List products pending admin approval |
+| `GET` | `/api/products?sellerId={id}` | List products by seller |
+| `POST` | `/api/products` | Add a new product |
+| `PUT` | `/api/products/{id}` | Update product fields |
+| `PUT` | `/api/products/{id}/moderate` | Approve or reject a pending product |
+| `PUT` | `/api/products/{id}/image` | Upload product image (Base64 → file) |
+| `DELETE` | `/api/products/{id}` | Delete a product |
+
+### Users
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/users` | List all users |
+
+### Orders
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/orders` | List all orders |
+| `PUT` | `/api/orders/{id}/status` | Update order status |
+
+### Coupons
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/coupons` | List all coupons |
+| `POST` | `/api/coupons` | Create a new coupon |
+| `PUT` | `/api/coupons/{id}/deactivate` | Deactivate a coupon |
+
+### Configuration
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/config` | Get all key-value config entries |
+| `GET` | `/api/config/{key}` | Get a single config value by key |
+| `POST` | `/api/config` | Upsert a config value `{key, value}` |
+
+### Support
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/support/tickets` | List all support tickets |
+| `POST` | `/api/support/tickets` | Create a support ticket |
+| `PUT` | `/api/support/tickets/{id}/status` | Update ticket status |
+| `GET` | `/api/support/bugs` | List all bug reports |
+| `POST` | `/api/support/bugs` | Submit a bug report |
+| `PUT` | `/api/support/bugs/{id}/status` | Update bug report status |
+
+### Static files
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/uploads/{filename}` | Serve uploaded product images |
+
+## Database connection
+
+The `Conexion` class implements a lazy singleton that reconnects automatically if the connection goes stale:
+
+```java
+// src/conexion/Conexion.java
+public class Conexion {
+    private static Connection connection = null;
+
+    // Reads from environment variables, falls back to defaults
+    private static final String URL = System.getenv("DB_URL") != null
+        ? System.getenv("DB_URL")
+        : "jdbc:postgresql://localhost:5432/tienda_digital_textiles_db";
+    private static final String USER = System.getenv("DB_USER") != null
+        ? System.getenv("DB_USER") : "postgres";
+    private static final String PASSWORD = System.getenv("DB_PASSWORD") != null
+        ? System.getenv("DB_PASSWORD") : "Mp.1025889078";
+
+    public static Connection getConnection() {
+        try {
+            if (connection == null || connection.isClosed() || !connection.isValid(3)) {
+                // isValid(3) sends a real liveness check with a 3-second timeout
+                Class.forName("org.postgresql.Driver");
+                connection = DriverManager.getConnection(URL, USER, PASSWORD);
+            }
+        } catch (Exception e) { /* ... */ }
+        return connection;
+    }
+}
+```
+
+<Warning>
+The default credentials (`postgres` / `Mp.1025889078`) are hard-coded as fallbacks. Override them with `DB_URL`, `DB_USER`, and `DB_PASSWORD` environment variables before deploying to any environment beyond local development.
+</Warning>
+
+## Authentication and password hashing
+
+`AuthDAO` hashes every password with SHA-256 before storing or comparing it:
+
+```java
+// src/dao/AuthDAO.java
+private String hashPassword(String password) {
+    MessageDigest md = MessageDigest.getInstance("SHA-256");
+    md.update(password.getBytes());
+    byte[] digest = md.digest();
+    StringBuilder sb = new StringBuilder();
+    for (byte b : digest) {
+        sb.append(String.format("%02x", b));
+    }
+    return sb.toString();
+}
+```
+
+On login, the stored hash is compared with `hashPassword(password)`. New users receive the default role `"cliente"`, which the frontend normalizes to `"client"` after a successful login response.
+
+<Note>
+The current implementation uses plain SHA-256 without a salt. A production deployment should migrate to a salted algorithm such as bcrypt or Argon2.
+</Note>
+
+## CORS configuration
+
+Every handler sets the same CORS headers before processing the request:
+
+```java
+exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "http://localhost:3001");
+exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE, OPTIONS");
+exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type,Authorization");
+
+// Respond to preflight immediately
+if ("OPTIONS".equals(exchange.getRequestMethod())) {
+    exchange.sendResponseHeaders(204, -1);
+    return;
+}
+```
+
+The allowed origin is hard-coded to `http://localhost:3001`. Update this when deploying to a public domain.

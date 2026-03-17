@@ -1,0 +1,147 @@
+---
+title: Authentication
+description: How users log in, register, and are routed by role in D&D Textil.
+---
+
+D&D Textil uses a role-based authentication system backed by a Java REST API. The React frontend handles session storage, role normalization, and route protection through a shared `AuthContext`.
+
+## Routes
+
+| Route | Component | Description |
+|---|---|---|
+| `/login` | `Login.jsx` | Email + password sign-in |
+| `/registro` | `Register.jsx` | New client account creation |
+
+## Logging in
+
+<Steps>
+  <Step title="Open the login page">
+    Navigate to `/login`. The page renders a glassmorphism card with an animated fabric background.
+  </Step>
+  <Step title="Enter your credentials">
+    Fill in your **email address** and **password**, then click **Iniciar Sesión**.
+  </Step>
+  <Step title="Backend authentication">
+    The frontend sends a `POST` request to `http://localhost:8081/api/login` with a JSON body:
+
+    ```javascript
+    POST /api/login
+    Content-Type: application/json
+
+    { "email": "user@example.com", "password": "secret" }
+    ```
+
+    A successful response returns `{ success: true, user: { ... } }`.
+  </Step>
+  <Step title="Role normalization">
+    `AuthContext` normalizes the role string returned by the backend before storing it:
+
+    | Backend value | Frontend role |
+    |---|---|
+    | `administrador` or `admin` | `admin` |
+    | `vendedor` | `seller` |
+    | `cliente` | `client` |
+
+    The `password_hash` field is stripped before the user object is saved.
+  </Step>
+  <Step title="Session storage">
+    The normalized user object is persisted to `localStorage` under the key `authUser` via the `useLocalStorage` hook. The `isAuthenticated` flag becomes `true` for the session lifetime.
+  </Step>
+  <Step title="Role-based redirect">
+    After a successful login, the app redirects based on role:
+
+    | Role | Redirect |
+    |---|---|
+    | `admin` | `/admin` |
+    | `seller` | `/vendedor` |
+    | `client` | `/cliente` |
+
+    If a user was redirected to login from a protected page, they are sent back to that page instead (stored in `location.state.from`).
+  </Step>
+</Steps>
+
+## Registering a new account
+
+Registration creates a `client` account only. Seller and admin accounts must be created by an administrator.
+
+<Steps>
+  <Step title="Open the registration page">
+    Navigate to `/registro` or click **Crear Cuenta Nueva** on the login page.
+  </Step>
+  <Step title="Fill in the form">
+    The form collects:
+    - Full name
+    - Email address
+    - Password (minimum 6 characters)
+    - Password confirmation
+
+    The frontend validates that both password fields match and that the password is at least 6 characters before submitting.
+  </Step>
+  <Step title="API call">
+    On submit, the app calls:
+
+    ```javascript
+    POST /api/register
+    Content-Type: application/json
+
+    { "name": "...", "email": "...", "password": "..." }
+    ```
+  </Step>
+  <Step title="Auto login">
+    On a successful `201` response, `AuthContext` automatically calls `login()` with the same credentials, so the user lands directly on `/cliente` without a second form submission.
+  </Step>
+</Steps>
+
+## Route protection
+
+The `ProtectedRoute` component wraps any route that requires authentication:
+
+```javascript
+<ProtectedRoute roles={['seller', 'admin']}>
+  <SellerDashboard />
+</ProtectedRoute>
+```
+
+| Condition | Outcome |
+|---|---|
+| Not authenticated | Redirected to `/login`; current path saved in `location.state.from` |
+| Authenticated but wrong role | Redirected to `/` (home) |
+| Authenticated with correct role | Renders the protected component |
+
+The `roles` prop accepts either a single string or an array of strings. Passing no `roles` prop allows any authenticated user through.
+
+## Logging out
+
+Calling `logout()` from `AuthContext` sets `authUser` in `localStorage` to `null`, which clears the session and triggers a UI re-render. A notification confirms the logout.
+
+## Password security
+
+Passwords are hashed with **SHA-256** on the backend before storage. This applies to both seeded accounts and any new account registered through `/registro`.
+
+## API endpoints
+
+| Method | Endpoint | Used for |
+|---|---|---|
+| `POST` | `http://localhost:8081/api/login` | Authenticate user |
+| `POST` | `http://localhost:8081/api/register` | Create new client account |
+
+<Warning>
+  Both endpoints are currently configured to point to `http://localhost:8081`. Update the base URL in `AuthContext.jsx` when deploying to a non-local environment.
+</Warning>
+
+## Development credentials
+
+<Note>
+  These credentials are for **development and testing only**. Do not use them in production.
+</Note>
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@ddtextil.com` | `admin123` |
+| Seller (Carlos Rodríguez) | `vendedor@ddtextil.com` | `vendedor123` |
+| Seller (María González) | `maria.gonzalez@ddtextil.com` | `vendedor123` |
+| Seller (Ana Martínez) | `ana.martinez@ddtextil.com` | `vendedor123` |
+| Client (Demo) | `cliente@ddtextil.com` | `cliente123` |
+| Client (Laura Sánchez) | `laura.sanchez@email.com` | `cliente123` |
+
+The login page also provides one-click quick-fill buttons for Admin, Vendedor, and Cliente roles to speed up testing.

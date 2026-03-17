@@ -1,0 +1,137 @@
+---
+title: "Product detail"
+description: "View full product information, browse the image gallery with zoom, select a quantity, and add items to your cart at /producto/:id."
+keywords: ["product detail", "image gallery", "zoom", "quantity", "add to cart", "fabric specs"]
+---
+
+## Overview
+
+The product detail page lives at `/producto/:id`, where `:id` is the product's string identifier (e.g., `/producto/1`). It is reached from any `ProductCard` in the catalog or from related-product cards at the bottom of another detail page.
+
+If the product ID is not found in the catalog, the page renders a "Producto no encontrado" message with a link back to `/catalogo`.
+
+## URL parameter
+
+The page reads the `id` param using React Router's `useParams()`:
+
+```jsx
+const { id } = useParams();
+const product = getProductById(id);
+```
+
+The `id` corresponds to the `"id"` field in `products.json` — a numeric string (`"1"`, `"2"`, etc.).
+
+## Breadcrumb navigation
+
+A breadcrumb bar sits below the header:
+
+```
+Inicio / Catálogo / <Product Name>
+```
+
+Click **Catálogo** to return to `/catalogo` at any time. There is also a **Volver al catálogo** link with a back-arrow icon just above the main content area.
+
+## Image gallery
+
+The `ImageGallery` component renders on the left half of the two-column layout. Each product ships with up to three images.
+
+### Main image
+
+The selected image is displayed in a square aspect-ratio container. Clicking the image toggles **zoom mode**, which scales the image to `1.5×` using a Framer Motion animation. While zoomed, a **"Click para alejar"** badge appears in the top-right corner. Click again to zoom out.
+
+### Thumbnails
+
+Below the main image, up to four thumbnails are arranged in a grid. The active thumbnail has a primary-color border and a drop shadow. Click any thumbnail to swap the main image; switching thumbnails also resets zoom.
+
+<Tip>
+  Use zoom to inspect fabric texture and weave before adding a product to your cart.
+</Tip>
+
+## Product information
+
+The right column shows all product metadata in the following order:
+
+| Field | Source key | Description |
+|---|---|---|
+| Category badge | `category` | Pill-shaped label in primary color |
+| Name | `name` | Large display heading |
+| Price | `price` | Formatted in COP with **por metro** label |
+| Description | `description` | Full paragraph text |
+| Technical specs | see below | Card with four fields in a 2×2 grid |
+| Care instructions | `care` | Blue info box with checkmark icon |
+
+### Technical specifications
+
+The specs card shows four fields side by side:
+
+| Label | Source key | Example |
+|---|---|---|
+| Material | `material` | `100% Algodón` |
+| Ancho | `width` | `150 cm` |
+| Peso | `weight` | `180 g/m²` |
+| Stock | `stock` | `50 metros` |
+
+## Quantity selector
+
+The `QuantitySelector` component lets you choose how many metres to add. It renders as a decrement button, a number input, and an increment button.
+
+**Constraints:**
+
+- **Minimum:** `1` metre (default).
+- **Maximum:** `product.stock` metres — the increment button is disabled once you reach the available stock.
+- You can also type a value directly into the input. Values outside the `[1, stock]` range are rejected; an empty input resets to `1`.
+
+The label to the right of the control always shows the maximum: `metros (máx: N)`.
+
+<Warning>
+  The decrement button is disabled at 1 metre. The increment button is disabled at the product's stock quantity. You cannot order more fabric than is available.
+</Warning>
+
+## Adding to the cart
+
+Two primary action buttons sit below the quantity selector:
+
+| Button | Action |
+|---|---|
+| **Agregar al Carrito** | Calls `addToCart(product, quantity)` and shows a green success banner for 3 seconds |
+| **Comprar Ahora** | Calls `addToCart(product, quantity)` then navigates directly to `/carrito` |
+
+If the product is already in the cart and you click **Agregar al Carrito** again, the quantity is incremented by the currently selected amount (quantities stack).
+
+A success banner animates in below the buttons when adding to cart:
+
+```
+✓ ¡Producto agregado al carrito!
+```
+
+Two secondary outline buttons are also available: **Favoritos** and **Compartir**.
+
+## Related products
+
+Below the main product section, up to four products from the same category are shown in a four-column grid under the heading **Productos Relacionados**. The current product is excluded from this list.
+
+Related products are rendered with the same `ProductCard` component used in the catalog, so all hover interactions and quick-add-to-cart functionality work identically.
+
+<Note>
+  The related products section only appears when at least one other product shares the same `category` value.
+</Note>
+
+## Full flow
+
+<Steps>
+  <Step title="Arrive at the page">
+    Click a product card in `/catalogo` or a related-product card. The page loads at `/producto/:id`.
+  </Step>
+  <Step title="Browse images">
+    Click thumbnails to switch the main image. Click the main image to zoom in for texture detail.
+  </Step>
+  <Step title="Review specs">
+    Check material, width, weight, stock, and care instructions in the right column.
+  </Step>
+  <Step title="Set your quantity">
+    Use the `+` / `−` buttons or type directly into the quantity input. The maximum is the available stock in metres.
+  </Step>
+  <Step title="Add to cart or buy now">
+    Click **Agregar al Carrito** to add and stay on the page, or **Comprar Ahora** to add and jump straight to `/carrito`.
+  </Step>
+</Steps>
